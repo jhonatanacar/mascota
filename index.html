@@ -87,11 +87,14 @@
   <form id="login" hidden>
     <label for="email">Tu email</label>
     <input id="email" type="email" required autocomplete="email">
-    <button>Enviarme enlace de acceso</button>
+    <label for="clave">Contraseña <small class="muted">(si ya tienes una; si no, déjala vacía y te llega un enlace al correo)</small></label>
+    <input id="clave" type="password" autocomplete="current-password">
+    <button>Entrar</button>
   </form>
 
   <section id="app" hidden>
-    <div class="fila"><span class="muted" id="quien"></span><button id="salir" class="sec">Salir</button></div>
+    <div class="fila"><span class="muted" id="quien"></span>
+      <span><button id="poner-clave" class="sec">🔑 Contraseña</button> <button id="salir" class="sec">Salir</button></span></div>
     <div id="elegir-mascota" class="chips" role="group" aria-label="Mascota"></div>
 
     <div data-tab="hoy">
@@ -373,6 +376,18 @@
   </form>
 </dialog>
 
+<dialog id="dlg-clave">
+  <form method="dialog">
+    <h3>🔑 Contraseña</h3>
+    <p class="muted">Con una contraseña entras con tu email sin esperar el correo de acceso.</p>
+    <label>Nueva contraseña <input name="clave" type="password" minlength="8" required autocomplete="new-password"></label>
+    <div class="fila">
+      <button type="button" class="sec" onclick="this.closest('dialog').close()">Cancelar</button>
+      <button value="ok">Guardar</button>
+    </div>
+  </form>
+</dialog>
+
 <dialog id="dlg-sintoma">
   <form method="dialog">
     <h3>🤒 Síntoma</h3>
@@ -461,15 +476,25 @@
     ingMascota = [], inventario = [], gastos = [], aprendizajes = [], recomendaciones = [];
 
   // ---------- Sesión ----------
+  // con contraseña entra directo; sin contraseña manda el enlace al correo (Supabase gratis: pocos correos por hora)
   $('login').onsubmit = async e => {
     e.preventDefault();
-    $('msg').textContent = 'Enviando…';
-    const { error } = await sb.auth.signInWithOtp({
-      email: $('email').value,
-      options: { emailRedirectTo: location.origin + location.pathname }
-    });
-    $('msg').textContent = error ? 'Error: ' + error.message : 'Revisa tu correo y abre el enlace.';
+    const email = $('email').value.trim(), clave = $('clave').value;
+    $('msg').textContent = clave ? 'Entrando…' : 'Enviando…';
+    const { error } = clave
+      ? await sb.auth.signInWithPassword({ email, password: clave })
+      : await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: location.origin + location.pathname } });
+    if (!error) return ($('msg').textContent = clave ? '' : 'Revisa tu correo (también spam) y abre el enlace más reciente.');
+    $('msg').textContent = /rate limit/i.test(error.message)
+      ? 'Supabase solo deja enviar pocos correos por hora. Espera alrededor de 1 hora sin reintentar, o entra con contraseña.'
+      : /invalid login credentials/i.test(error.message) ? 'Email o contraseña incorrectos.' : 'Error: ' + error.message;
   };
+  alEnviar($('dlg-clave'), async f => {
+    const { error } = await sb.auth.updateUser({ password: f.elements.clave.value });
+    if (error) throw error;
+    alert('Listo. La próxima vez entra con tu email y esta contraseña.');
+  });
+  $('poner-clave').onclick = () => { $('dlg-clave').querySelector('form').reset(); $('dlg-clave').showModal(); };
   $('salir').onclick = () => sb.auth.signOut();
 
   sb.auth.onAuthStateChange((_evt, session) => {
