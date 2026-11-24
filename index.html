@@ -1,0 +1,1446 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mascota</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icono-192.png">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <meta name="theme-color" content="#2e7d5b">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <style>
+    :root { --bg: #fafaf7; --card: #fff; --fg: #222; --accent: #2e7d5b; --muted: #777; --danger: #c0392b; }
+    @media (prefers-color-scheme: dark) { :root { --bg: #181a18; --card: #232623; --fg: #eee; --accent: #5cc493; --muted: #999; --danger: #e57373; } }
+    body { margin: 0; font: 16px/1.5 system-ui, sans-serif; background: var(--bg); color: var(--fg); }
+    main { max-width: 480px; margin: 0 auto; padding: 24px 16px; }
+    input, select, textarea, button { font: inherit; padding: 12px; border-radius: 8px; width: 100%; box-sizing: border-box; }
+    input, select, textarea { border: 1px solid var(--muted); background: transparent; color: inherit; }
+    label { display: block; margin-top: 12px; }
+    label.check { display: flex; gap: 8px; align-items: center; }
+    label.check input { width: auto; }
+    button { border: 0; background: var(--accent); color: #fff; margin-top: 8px; cursor: pointer; }
+    button.sec { background: transparent; color: var(--fg); border: 1px solid var(--muted); }
+    button.peligro { background: transparent; color: var(--danger); border: 1px solid var(--danger); }
+    button:disabled { opacity: .5; }
+    .muted { color: var(--muted); }
+    .fila { display: flex; gap: 8px; align-items: center; justify-content: space-between; }
+    .fila button { width: auto; }
+    .tarjeta { display: flex; gap: 12px; align-items: center; text-align: left; background: var(--card); color: var(--fg); border: 1px solid #8883; }
+    .tarjeta img, .sin-foto { width: 56px; height: 56px; border-radius: 50%; object-fit: cover; flex: none; display: grid; place-items: center; font-size: 28px; background: #8882; }
+    ul { list-style: none; padding: 0; }
+    li { padding: 8px 0; border-bottom: 1px solid #8883; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    li button { width: auto; margin: 0; padding: 4px 0; background: none; color: var(--fg); font-weight: 600; }
+    li a { margin-left: auto; color: var(--accent); }
+    dialog { width: min(440px, calc(100vw - 32px)); border: 0; border-radius: 12px; background: var(--card); color: var(--fg); padding: 16px; }
+    dialog::backdrop { background: #0008; }
+    .chips { display: flex; gap: 8px; flex-wrap: wrap; }
+    .chips button { width: auto; margin: 0; padding: 6px 14px; border-radius: 99px; background: transparent; color: var(--fg); border: 1px solid var(--muted); }
+    .chips button[aria-pressed="true"] { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .grilla { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 12px; }
+    .grilla button { margin: 0; padding: 10px 2px; font-size: 13px; display: flex; flex-direction: column; align-items: center; gap: 2px; background: var(--card); color: var(--fg); border: 1px solid #8883; }
+    .grilla button span { font-size: 28px; }
+    .toast { position: fixed; left: 16px; right: 16px; bottom: 16px; max-width: 448px; margin: 0 auto; padding: 8px 8px 8px 16px; border-radius: 10px; background: #222; color: #fff; display: flex; align-items: center; justify-content: space-between; gap: 8px; box-shadow: 0 4px 16px #0004; }
+    .toast button { width: auto; margin: 0; padding: 6px 12px; color: #fff; border-color: #fff8; }
+    .filtros select { flex: 1; }
+    .alerta { color: var(--danger); width: 100%; }
+    li .dar { margin-left: auto; padding: 4px 12px; background: var(--accent); color: #fff; border-radius: 99px; font-weight: normal; }
+    h3.sub { margin: 16px 0 0; font-size: 15px; }
+    #grafico-peso svg { display: block; margin-top: 8px; }
+    #historial h3 { margin: 20px 0 4px; font-size: 14px; color: var(--muted); text-transform: capitalize; }
+    .evento { margin: 0; padding: 10px 4px; text-align: left; background: none; color: var(--fg); border-radius: 0; border-bottom: 1px solid #8883; display: block; }
+    .evento small { display: block; margin-left: 52px; }
+    .evento b { display: inline-block; width: 48px; font-variant-numeric: tabular-nums; }
+    main { padding-bottom: 96px; }
+    #elegir-mascota { margin-top: 12px; }
+    #tabs { position: fixed; left: 0; right: 0; bottom: 0; display: flex; background: var(--card); border-top: 1px solid #8884; padding-bottom: env(safe-area-inset-bottom); }
+    #tabs button { flex: 1; margin: 0; padding: 8px 0; border-radius: 0; background: none; color: var(--muted); font-size: 12px; display: flex; flex-direction: column; align-items: center; }
+    #tabs button span { font-size: 22px; }
+    #tabs button[aria-current="page"] { color: var(--accent); font-weight: 600; }
+    .toast { bottom: 76px; }
+    .hoy { background: var(--card); border: 1px solid #8883; border-radius: 12px; padding: 12px 16px; margin-bottom: 12px; }
+    .hoy h3 { margin: 0 0 4px; }
+    .hoy p { margin: 4px 0; font-size: 15px; }
+    .hoy .ok { color: var(--accent); }
+    .ing { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid #8883; }
+    .ing small { display: block; }
+    .estados { display: flex; gap: 4px; flex: none; }
+    .estados button { width: 40px; margin: 0; padding: 6px 0; background: transparent; border: 1px solid #8885; opacity: .45; }
+    .estados button[aria-pressed="true"] { opacity: 1; border-color: var(--accent); background: #8882; }
+    table.menu { width: 100%; border-collapse: collapse; margin: 8px 0; font-size: 15px; }
+    table.menu td, table.menu th { padding: 6px 4px; border-bottom: 1px solid #8883; text-align: left; }
+    table.menu td + td, table.menu th + th { text-align: right; }
+    .aviso { background: #c0392b18; border-left: 3px solid var(--danger); padding: 8px 12px; margin: 8px 0; border-radius: 4px; font-size: 14px; }
+    details summary { cursor: pointer; margin: 12px 0 4px; }
+    #emergencia { margin-top: 12px; }
+    #tabs button { font-size: 11px; }
+    a.tel { display: block; padding: 12px; margin: 8px 0; border-radius: 8px; background: var(--danger); color: #fff; text-decoration: none; font-weight: 600; }
+    a.tel small { display: block; font-weight: normal; }
+    #lista-ingredientes h4 { margin: 16px 0 4px; }
+    [hidden] { display: none !important; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>🐾 Mascota</h1>
+
+  <form id="login" hidden>
+    <label for="email">Tu email</label>
+    <input id="email" type="email" required autocomplete="email">
+    <button>Enviarme enlace de acceso</button>
+  </form>
+
+  <section id="app" hidden>
+    <div class="fila"><span class="muted" id="quien"></span><button id="salir" class="sec">Salir</button></div>
+    <div id="elegir-mascota" class="chips" role="group" aria-label="Mascota"></div>
+
+    <div data-tab="hoy">
+      <button id="emergencia" class="peligro">🚨 Emergencia</button>
+      <section id="registrar" hidden>
+        <h2>Registrar</h2>
+        <div id="botones" class="grilla"></div>
+        <button id="crono" class="sec"></button>
+      </section>
+      <h2>Hoy</h2>
+      <div id="panel-hoy"></div>
+    </div>
+
+    <div data-tab="mascotas" hidden>
+      <h2>Mis mascotas</h2>
+      <div id="lista-mascotas"></div>
+      <button id="nueva-mascota">+ Agregar mascota</button>
+
+      <h2>Reglas y alergias</h2>
+      <p class="muted">Lo que la app nunca olvida. Las alergias y lo que hay que evitar bloquean comidas y recomendaciones.</p>
+      <ul id="lista-reglas"></ul>
+      <button id="nueva-regla" class="sec">+ Agregar regla</button>
+
+      <h2>Plan de alimentación</h2>
+      <ul id="lista-plan"></ul>
+      <button id="nuevo-plan" class="sec">+ Agregar comida al plan</button>
+
+      <h2>Contactos</h2>
+      <ul id="lista-contactos"></ul>
+      <button id="nuevo-contacto" class="sec">+ Agregar contacto</button>
+    </div>
+
+    <div data-tab="comida" hidden>
+      <h2 id="titulo-comida">Comida</h2>
+      <div id="calorias" class="hoy"></div>
+
+      <h3 class="sub">Ingredientes</h3>
+      <p class="muted">Marca cada uno: ✅ tolera · 🧪 probando · ⛔ alérgico (crea la regla de alergia sola).</p>
+      <div id="lista-ingredientes"></div>
+      <details>
+        <summary>☠️ Tóxicos para perros (siempre bloqueados)</summary>
+        <p id="lista-toxicos" class="muted"></p>
+      </details>
+
+      <h3 class="sub">Generar menú balanceado</h3>
+      <form id="f-menu">
+        <label>Proteína <select name="prot"></select></label>
+        <label>Carbohidrato <select name="carb"></select></label>
+        <label>Verdura <select name="veg"></select></label>
+        <label>Comida casera vs. croquetas
+          <select name="pct">
+            <option value="100">100 % casera</option><option value="75">75 % casera + 25 % croquetas</option>
+            <option value="50">50 % casera + 50 % croquetas</option><option value="25">25 % casera + 75 % croquetas</option>
+          </select>
+        </label>
+        <label>Calorías de las croquetas (kcal por kg, está en la bolsa) <input name="kcalkg" type="number" min="1000" max="6000" value="3600"></label>
+        <label>Comidas por día <input name="comidas" type="number" min="1" max="4" value="2"></label>
+        <label class="check"><input name="premios" type="checkbox" checked> Reservar 10 % de calorías para premios</label>
+        <button>Calcular menú</button>
+      </form>
+      <div id="resultado-menu"></div>
+      <button id="menu-semanal" class="sec">📅 Menú semanal + lista de compras</button>
+      <div id="resultado-semanal"></div>
+
+      <h3 class="sub">Inventario</h3>
+      <ul id="lista-inventario"></ul>
+      <button id="nuevo-inventario" class="sec">+ Agregar bolsa o alimento</button>
+    </div>
+
+    <div data-tab="salud" hidden>
+      <h2>Salud</h2>
+      <button id="ficha" class="sec">🖨️ Ficha para el veterinario (imprimir o PDF)</button>
+      <h3 class="sub">Próximas fechas</h3>
+      <ul id="lista-proximos"></ul>
+      <h3 class="sub">Medicamentos</h3>
+      <ul id="lista-meds"></ul>
+      <button id="nuevo-med" class="sec">+ Agregar medicamento</button>
+      <h3 class="sub">Vacunas, desparasitaciones y consultas</h3>
+      <ul id="lista-salud"></ul>
+      <button id="nueva-salud" class="sec">+ Agregar registro de salud</button>
+      <h3 class="sub" id="titulo-peso">Peso</h3>
+      <div id="grafico-peso"></div>
+      <ul id="lista-peso"></ul>
+      <button id="nuevo-peso" class="sec">+ Registrar peso</button>
+    </div>
+
+    <div data-tab="historial" hidden>
+      <h2>Historial</h2>
+      <div class="fila filtros">
+        <select id="f-mascota" aria-label="Filtrar por mascota"></select>
+        <select id="f-tipo" aria-label="Filtrar por tipo"></select>
+      </div>
+      <button id="registro-manual" class="sec">+ Registro con otra fecha u hora</button>
+      <div id="historial"></div>
+      <button id="mas" class="sec" hidden>Cargar más</button>
+      <button id="exportar" class="sec">⬇️ Exportar todo el historial (Excel / CSV)</button>
+
+      <h2>Gastos</h2>
+      <p id="resumen-gastos" class="muted"></p>
+      <ul id="lista-gastos"></ul>
+      <button id="nuevo-gasto" class="sec">+ Agregar gasto</button>
+    </div>
+  </section>
+
+  <p id="msg" class="muted" role="status"></p>
+  <div id="toast" class="toast" role="status" hidden><span></span><button id="deshacer" class="sec">Deshacer</button></div>
+</main>
+
+<nav id="tabs" hidden>
+  <button data-ir="hoy"><span aria-hidden="true">🏠</span>Hoy</button>
+  <button data-ir="mascotas"><span aria-hidden="true">🐾</span>Mascotas</button>
+  <button data-ir="comida"><span aria-hidden="true">🍖</span>Comida</button>
+  <button data-ir="salud"><span aria-hidden="true">🩺</span>Salud</button>
+  <button data-ir="historial"><span aria-hidden="true">📅</span>Historial</button>
+</nav>
+
+<dialog id="dlg-mascota">
+  <form method="dialog">
+    <h3>Mascota</h3>
+    <label>Nombre * <input name="nombre" required></label>
+    <label>Especie <input name="especie" list="especies"></label>
+    <datalist id="especies"><option>Perro</option><option>Gato</option><option>Ave</option><option>Conejo</option></datalist>
+    <label>Raza <input name="raza"></label>
+    <label>Fecha de nacimiento <input name="fecha_nacimiento" type="date"></label>
+    <label>Sexo
+      <select name="sexo"><option value="">—</option><option value="macho">Macho</option><option value="hembra">Hembra</option></select>
+    </label>
+    <label class="check"><input name="esterilizado" type="checkbox"> Esterilizado/a</label>
+    <label>Actividad
+      <select name="actividad"><option value="baja">Baja (casi no sale)</option><option value="normal">Normal</option><option value="alta">Alta (mucho ejercicio)</option></select>
+    </label>
+    <label>Objetivo
+      <select name="objetivo"><option value="mantener">Mantener peso</option><option value="bajar">Bajar de peso</option></select>
+    </label>
+    <label>Peso objetivo (kg, si quiere bajar) <input name="peso_objetivo" type="number" min="0.5" step="0.1" inputmode="decimal"></label>
+    <label>Foto <input name="foto" type="file" accept="image/*"></label>
+    <label>Notas <textarea name="notas" rows="3"></textarea></label>
+    <div class="fila">
+      <button type="button" class="sec" onclick="this.closest('dialog').close()">Cancelar</button>
+      <button value="ok">Guardar</button>
+    </div>
+    <button type="button" class="peligro" data-borrar>Eliminar mascota</button>
+  </form>
+</dialog>
+
+<dialog id="dlg-contacto">
+  <form method="dialog">
+    <h3>Contacto</h3>
+    <label>Nombre * <input name="nombre" required></label>
+    <label>Tipo
+      <select name="tipo"><option value="">—</option><option value="veterinario">Veterinario</option><option value="paseador">Paseador</option><option value="emergencia">Emergencia</option></select>
+    </label>
+    <label>Teléfono <input name="telefono" type="tel"></label>
+    <div class="fila">
+      <button type="button" class="sec" onclick="this.closest('dialog').close()">Cancelar</button>
+      <button value="ok">Guardar</button>
+    </div>
+    <button type="button" class="peligro" data-borrar>Eliminar contacto</button>
+  </form>
+</dialog>
+
+<dialog id="dlg-regla">
+  <form method="dialog">
+    <h3>Regla</h3>
+    <label>Mascota <select name="mascota_id" required></select></label>
+    <label>Tipo
+      <select name="tipo" required>
+        <option value="alergia">⛔ Alergia</option><option value="evitar">🚫 Evitar</option>
+        <option value="preferencia">💚 Preferencia</option><option value="indicacion_vet">🩺 Indicación del veterinario</option>
+      </select>
+    </label>
+    <label>Sustancia o tema * <input name="sustancia" required placeholder="ej: pollo"></label>
+    <label>Sinónimos (separados por coma)
+      <textarea name="sinonimos" rows="2" placeholder="se sugieren solos al escribir la sustancia; revísalos"></textarea>
+    </label>
+    <label>Gravedad
+      <select name="gravedad"><option value="">—</option><option value="leve">Leve</option><option value="moderada">Moderada</option><option value="grave">Grave</option></select>
+    </label>
+    <label>Origen
+      <select name="origen"><option value="yo">Yo</option><option value="veterinario">Veterinario</option><option value="ia">IA (confirmada)</option></select>
+    </label>
+    <label class="check"><input name="activa" type="checkbox"> Activa</label>
+    <div class="fila">
+      <button type="button" class="sec" onclick="this.closest('dialog').close()">Cancelar</button>
+      <button value="ok">Guardar</button>
+    </div>
+    <button type="button" class="peligro" data-borrar>Eliminar regla</button>
+  </form>
+</dialog>
+
+<dialog id="dlg-plan">
+  <form method="dialog">
+    <h3>Comida del plan</h3>
+    <label>Mascota <select name="mascota_id" required></select></label>
+    <label>Alimento * <input name="alimento" required placeholder="ej: Croquetas cordero y arroz"></label>
+    <label>Gramos <input name="gramos" type="number" min="1" step="any" inputmode="decimal"></label>
+    <label>Hora <input name="hora" type="time"></label>
+    <label class="check"><input name="activo" type="checkbox"> Activo</label>
+    <div class="fila">
+      <button type="button" class="sec" onclick="this.closest('dialog').close()">Cancelar</button>
+      <button value="ok">Guardar</button>
+    </div>
+    <button type="button" class="peligro" data-borrar>Eliminar del plan</button>
+  </form>
+</dialog>
+
+<dialog id="dlg-salud">
+  <form method="dialog">
+    <h3>Salud</h3>
+    <label>Mascota <select name="mascota_id" required></select></label>
+    <label>Tipo
+      <select name="tipo" required>
+        <option value="vacuna">💉 Vacuna</option><option value="desparasitacion">🪱 Desparasitación</option>
+        <option value="consulta">🩺 Consulta</option><option value="cirugia">🏥 Cirugía</option><option value="analisis">🧪 Análisis</option>
+        <option value="peluqueria">✂️ Peluquería</option><option value="dental">🦷 Limpieza dental</option>
+      </select>
+    </label>
+    <label>Detalle <input name="detalle" placeholder="ej: Rabia, Séxtuple, Bravecto"></label>
+    <label>Fecha * <input name="fecha" type="date" required></label>
+    <label>Próxima fecha <input name="proxima_fecha" type="date"></label>
+    <label>Veterinario <input name="veterinario" list="vets"></label>
+    <datalist id="vets"></datalist>
+    <div class="fila">
+      <button type="button" class="sec" onclick="this.closest('dialog').close()">Cancelar</button>
+      <button value="ok">Guardar</button>
+    </div>
+    <button type="button" class="peligro" data-borrar>Eliminar registro</button>
+  </form>
+</dialog>
+
+<dialog id="dlg-med">
+  <form method="dialog">
+    <h3>Medicamento</h3>
+    <label>Mascota <select name="mascota_id" required></select></label>
+    <label>Nombre * <input name="nombre" required placeholder="ej: Amoxicilina"></label>
+    <label>Dosis <input name="dosis" placeholder="ej: 1/2 pastilla"></label>
+    <label>Cada cuántas horas <input name="cada_horas" type="number" min="1" step="any" inputmode="decimal"></label>
+    <label>Desde <input name="desde" type="date"></label>
+    <label>Hasta <input name="hasta" type="date"></label>
+    <div class="fila">
+      <button type="button" class="sec" onclick="this.closest('dialog').close()">Cancelar</button>
+      <button value="ok">Guardar</button>
+    </div>
+    <button type="button" class="peligro" data-borrar>Eliminar medicamento</button>
+  </form>
+</dialog>
+
+<dialog id="dlg-peso">
+  <form method="dialog">
+    <h3>Peso</h3>
+    <label>Mascota <select name="mascota_id" required></select></label>
+    <label>Fecha * <input name="fecha" type="date" required></label>
+    <label>Kilos * <input name="kg" type="number" min="0.01" step="0.01" inputmode="decimal" required></label>
+    <div class="fila">
+      <button type="button" class="sec" onclick="this.closest('dialog').close()">Cancelar</button>
+      <button value="ok">Guardar</button>
+    </div>
+    <button type="button" class="peligro" data-borrar>Eliminar</button>
+  </form>
+</dialog>
+
+<dialog id="dlg-sintoma">
+  <form method="dialog">
+    <h3>🤒 Síntoma</h3>
+    <p class="muted">Toca los que tiene (puedes marcar varios).</p>
+    <div id="chips-sintoma" class="chips"></div>
+    <label>Detalle <textarea name="detalle" rows="2" placeholder="opcional"></textarea></label>
+    <div class="fila">
+      <button type="button" class="sec" onclick="this.closest('dialog').close()">Cancelar</button>
+      <button value="ok">Guardar</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="dlg-inventario">
+  <form method="dialog">
+    <h3>Inventario</h3>
+    <label>Mascota <select name="mascota_id" data-todas="Todas (compartido)"></select></label>
+    <label>Alimento * <input name="alimento" required placeholder="ej: Croquetas Hill's Small Bites"></label>
+    <label>Kilos de la bolsa * <input name="kg" type="number" min="0.1" step="0.1" inputmode="decimal" required></label>
+    <label>Abierta el * <input name="abierto" type="date" required></label>
+    <label>Gramos por día <input name="gramos_dia" type="number" min="1" inputmode="numeric" placeholder="vacío = se calcula del plan"></label>
+    <label class="check"><input name="activo" type="checkbox"> Activa</label>
+    <div class="fila">
+      <button type="button" class="sec" onclick="this.closest('dialog').close()">Cancelar</button>
+      <button value="ok">Guardar</button>
+    </div>
+    <button type="button" class="peligro" data-borrar>Eliminar</button>
+  </form>
+</dialog>
+
+<dialog id="dlg-gasto">
+  <form method="dialog">
+    <h3>Gasto</h3>
+    <label>Fecha * <input name="fecha" type="date" required></label>
+    <label>Categoría
+      <select name="categoria" required>
+        <option value="veterinario">🩺 Veterinario</option><option value="comida">🍖 Comida</option><option value="peluqueria">✂️ Peluquería</option>
+        <option value="medicinas">💊 Medicinas</option><option value="accesorios">🎾 Accesorios</option><option value="otros">📦 Otros</option>
+      </select>
+    </label>
+    <label>Monto * <input name="monto" type="number" min="0" step="any" inputmode="decimal" required></label>
+    <label>Mascota <select name="mascota_id" data-todas="Todas"></select></label>
+    <label>Nota <input name="nota"></label>
+    <div class="fila">
+      <button type="button" class="sec" onclick="this.closest('dialog').close()">Cancelar</button>
+      <button value="ok">Guardar</button>
+    </div>
+    <button type="button" class="peligro" data-borrar>Eliminar</button>
+  </form>
+</dialog>
+
+<dialog id="dlg-emergencia">
+  <h3>🚨 Emergencia</h3>
+  <div id="contenido-emergencia"></div>
+  <button class="sec" onclick="this.closest('dialog').close()">Cerrar</button>
+</dialog>
+
+<dialog id="dlg-evento">
+  <form method="dialog">
+    <h3>Registro</h3>
+    <label>Mascota <select name="mascota_id" required></select></label>
+    <label>Tipo <select name="tipo" required></select></label>
+    <label>Fecha y hora * <input name="fecha_hora" type="datetime-local" required></label>
+    <label>Duración (minutos) <input name="duracion_min" type="number" min="0" inputmode="numeric"></label>
+    <label>Cantidad <input name="cantidad" placeholder="ej: 200 g, 1 pastilla"></label>
+    <label>Nota <textarea name="nota" rows="3"></textarea></label>
+    <div class="fila">
+      <button type="button" class="sec" onclick="this.closest('dialog').close()">Cancelar</button>
+      <button value="ok">Guardar</button>
+    </div>
+    <button type="button" class="peligro" data-borrar>Eliminar registro</button>
+  </form>
+</dialog>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="config.js"></script>
+<script src="reglas.js"></script>
+<script src="aprende.js"></script>
+<script src="comida.js"></script>
+<script>
+  const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  let usuario = null, mascotas = [], contactos = [], reglas = [], plan = [], salud = [], meds = [], pesos = [], tomas = [], recientes = [],
+    ingMascota = [], inventario = [], gastos = [];
+
+  // ---------- Sesión ----------
+  $('login').onsubmit = async e => {
+    e.preventDefault();
+    $('msg').textContent = 'Enviando…';
+    const { error } = await sb.auth.signInWithOtp({
+      email: $('email').value,
+      options: { emailRedirectTo: location.origin + location.pathname }
+    });
+    $('msg').textContent = error ? 'Error: ' + error.message : 'Revisa tu correo y abre el enlace.';
+  };
+  $('salir').onclick = () => sb.auth.signOut();
+
+  sb.auth.onAuthStateChange((_evt, session) => {
+    usuario = session?.user ?? null;
+    $('login').hidden = !!usuario;
+    $('app').hidden = $('tabs').hidden = !usuario;
+    $('msg').textContent = '';
+    if (usuario) {
+      $('quien').textContent = usuario.email;
+      setTimeout(cargar); // Supabase pide no llamar a la base dentro de este callback
+    } else {
+      mascotas = contactos = [];
+      reglas = plan = salud = meds = pesos = tomas = recientes = ingMascota = inventario = gastos = [];
+      for (const id of ['lista-mascotas', 'lista-contactos', 'lista-reglas', 'lista-plan', 'historial',
+        'lista-proximos', 'lista-meds', 'lista-salud', 'lista-peso', 'grafico-peso', 'panel-hoy', 'calorias',
+        'lista-ingredientes', 'resultado-menu', 'resultado-semanal', 'lista-inventario', 'lista-gastos', 'resumen-gastos']) $(id).innerHTML = '';
+    }
+  });
+
+  // ---------- Carga y dibujo ----------
+  async function cargar() {
+    const res = await Promise.all([
+      sb.from('mascotas').select('*').order('nombre'),
+      sb.from('contactos').select('*').order('nombre'),
+      sb.from('reglas').select('*').order('creada'),
+      sb.from('plan_alimentacion').select('*').order('hora'),
+      sb.from('salud').select('*').order('fecha', { ascending: false }),
+      sb.from('medicamentos').select('*').order('desde', { ascending: false }),
+      sb.from('peso').select('*').order('fecha'),
+      // últimas tomas de medicina, para calcular la próxima dosis
+      sb.from('eventos').select('mascota_id, nota, fecha_hora').eq('tipo', 'medicina').order('fecha_hora', { ascending: false }).limit(200),
+      // últimos 45 días, para que la app aprenda horarios y detecte síntomas repetidos
+      sb.from('eventos').select('mascota_id, tipo, fecha_hora, nota, duracion_min, creado_por').gte('fecha_hora', new Date(Date.now() - 45 * 864e5).toISOString())
+        .order('fecha_hora', { ascending: false }).limit(3000),
+      sb.from('ingredientes_mascota').select('*'),
+      sb.from('inventario').select('*').order('abierto', { ascending: false }),
+      sb.from('gastos').select('*').order('fecha', { ascending: false }).limit(500)
+    ]);
+    const fallo = res.find(r => r.error);
+    if (fallo) return ($('msg').textContent = 'Error al cargar: ' + fallo.error.message);
+    [mascotas, contactos, reglas, plan, salud, meds, pesos, tomas, recientes, ingMascota, inventario, gastos] = res.map(r => r.data);
+
+    const urls = {};
+    const rutas = mascotas.map(x => x.foto_url).filter(Boolean);
+    if (rutas.length) {
+      const { data } = await sb.storage.from('fotos').createSignedUrls(rutas, 3600);
+      data?.forEach(d => { if (d.signedUrl) urls[d.path] = d.signedUrl; });
+    }
+
+    $('lista-mascotas').innerHTML = mascotas.map(x => `
+      <button class="tarjeta" data-id="${x.id}">
+        ${urls[x.foto_url] ? `<img src="${esc(urls[x.foto_url])}" alt="">` : '<span class="sin-foto">🐾</span>'}
+        <span><strong>${esc(x.nombre)}</strong><br>
+        <small class="muted">${esc([x.especie, x.raza, edad(x.fecha_nacimiento)].filter(Boolean).join(' · '))}</small>
+        ${alergiasDe(x.id).length ? `<br><small class="alerta">⛔ Alergia: ${esc(alergiasDe(x.id).map(r => r.sustancia).join(', '))}</small>` : ''}</span>
+      </button>`).join('') || '<p class="muted">Todavía no agregaste mascotas.</p>';
+
+    $('lista-contactos').innerHTML = contactos.map(x => `
+      <li><button data-id="${x.id}">${esc(x.nombre)}</button>
+      <small class="muted">${esc(x.tipo)}</small>
+      ${x.telefono ? `<a href="tel:${esc(x.telefono.replace(/[^\d+]/g, ''))}">📞 ${esc(x.telefono)}</a>` : ''}</li>`).join('')
+      || '<li class="muted">Sin contactos.</li>';
+
+    const opciones = mascotas.map(x => `<option value="${x.id}">${esc(x.nombre)}</option>`).join('');
+    const fm = $('f-mascota').value;
+    $('f-mascota').innerHTML = '<option value="">Todas las mascotas</option>' + opciones;
+    $('f-mascota').value = mascotas.some(x => x.id === fm) ? fm : '';
+    $('f-mascota').hidden = mascotas.length < 2;
+    document.querySelectorAll('select[name=mascota_id]').forEach(s => {
+      s.innerHTML = (s.dataset.todas ? `<option value="">${esc(s.dataset.todas)}</option>` : '') + opciones;
+    });
+
+    const nombreDe = id => mascotas.length > 1 ? mascotas.find(x => x.id === id)?.nombre : null;
+    $('lista-reglas').innerHTML = reglas.map(r => `
+      <li><button data-id="${r.id}">${ICONO_REGLA[r.tipo]} ${esc(r.sustancia)}</button>
+      <small class="muted">${esc([nombreDe(r.mascota_id), r.gravedad, r.activa ? '' : 'inactiva',
+        r.sinonimos.length ? r.sinonimos.length + ' sinónimos' : ''].filter(Boolean).join(' · '))}</small></li>`).join('')
+      || '<li class="muted">Sin reglas. Agrega aquí alergias y lo que tu mascota no debe comer.</li>';
+
+    $('lista-plan').innerHTML = plan.map(p => {
+      const c = chocan(p.alimento, [...reglasDe(p.mascota_id), ...TOXICOS]);
+      return `<li><button data-id="${p.id}">${p.hora ? p.hora.slice(0, 5) : '—'} · ${esc(p.alimento)}</button>
+        <small class="muted">${esc([p.gramos && p.gramos + ' g', nombreDe(p.mascota_id), p.activo ? '' : 'inactivo'].filter(Boolean).join(' · '))}</small>
+        ${c.length ? `<small class="alerta">⛔ Choca con: ${esc(c.map(r => r.sustancia).join(', '))}</small>` : ''}</li>`;
+    }).join('') || '<li class="muted">Sin plan de alimentación.</li>';
+
+    dibujarSalud(nombreDe);
+    dibujarHoy();
+    dibujarGastos();
+    dibujarElegir();
+    cargarHistorial();
+  }
+
+  function edad(fecha) {
+    if (!fecha) return '';
+    const n = new Date(fecha + 'T00:00'), h = new Date();
+    const meses = Math.max(0, (h.getFullYear() - n.getFullYear()) * 12 + h.getMonth() - n.getMonth() - (h.getDate() < n.getDate()));
+    if (meses >= 12) { const a = Math.floor(meses / 12); return a + (a === 1 ? ' año' : ' años'); }
+    return meses + (meses === 1 ? ' mes' : ' meses');
+  }
+
+  // ---------- Formularios (genéricos para mascota y contacto) ----------
+  function abrir(dlg, fila = {}) {
+    const f = dlg.querySelector('form');
+    f.reset();
+    f.dataset.id = fila.id || '';
+    for (const el of f.elements) {
+      if (!el.name || el.type === 'file') continue;
+      if (el.type === 'checkbox') el.checked = !!fila[el.name];
+      else el.value = fila[el.name] ?? '';
+    }
+    f.querySelector('[data-borrar]').hidden = !fila.id;
+    dlg.showModal();
+  }
+
+  function datos(f) {
+    const o = {};
+    for (const el of f.elements) {
+      if (!el.name || el.type === 'file') continue;
+      o[el.name] = el.type === 'checkbox' ? el.checked : (el.value.trim() || null);
+    }
+    return o;
+  }
+
+  async function guardar(tabla, f, extra = {}) {
+    const fila = { ...datos(f), ...extra };
+    const id = f.dataset.id;
+    const { error } = id ? await sb.from(tabla).update(fila).eq('id', id) : await sb.from(tabla).insert(fila);
+    if (error) throw error;
+  }
+
+  // ---------- Reglas (el filtro está en reglas.js) ----------
+  const ICONO_REGLA = { alergia: '⛔', evitar: '🚫', preferencia: '💚', indicacion_vet: '🩺' };
+  const CANCELADO = new Error('cancelado'); // el usuario no confirmó: el formulario queda abierto sin mensaje de error
+  const reglasDe = id => reglas.filter(r => r.mascota_id === id);
+  const alergiasDe = id => reglasDe(id).filter(r => r.activa && r.tipo === 'alergia');
+  const lista = s => (s || '').split(',').map(x => x.trim()).filter(Boolean);
+
+  // true si no choca con ninguna regla, o si el usuario confirma igual
+  // conToxicos: también revisa la lista de tóxicos (para comida, premios y plan)
+  function confirmarReglas(texto, mascotaId, conToxicos = false) {
+    const c = chocan(texto, [...reglasDe(mascotaId), ...(conToxicos ? TOXICOS : [])]);
+    if (!c.length) return true;
+    const m = mascotas.find(x => x.id === mascotaId)?.nombre || 'Tu mascota';
+    const toxico = c.some(r => r.toxico);
+    return confirm(`${toxico ? '☠️ TÓXICO PARA PERROS' : '⛔ ATENCIÓN'}: "${texto}" coincide con reglas de ${m}:\n\n` +
+      c.map(r => `• ${r.toxico ? 'TÓXICO' : r.tipo === 'alergia' ? 'ALERGIA' : 'Evitar'}: ${r.sustancia}${r.gravedad ? ' (' + r.gravedad + ')' : ''}`).join('\n') +
+      (toxico ? '\n\nSi YA lo comió, guárdalo y llama al veterinario ahora.' : '') + '\n\n¿Guardar de todas formas?');
+  }
+
+  function alEnviar(dlg, accion) {
+    dlg.querySelector('form').addEventListener('submit', async e => {
+      e.preventDefault();
+      const btn = dlg.querySelector('button[value="ok"]');
+      btn.disabled = true;
+      try { await accion(e.target); dlg.close(); await cargar(); }
+      catch (err) { if (err !== CANCELADO) alert('No se pudo guardar: ' + err.message); }
+      finally { btn.disabled = false; }
+    });
+  }
+
+  function alBorrar(dlg, tabla, lista, mensaje, despues = () => {}) {
+    dlg.querySelector('[data-borrar]').onclick = async () => {
+      const fila = lista().find(x => x.id === dlg.querySelector('form').dataset.id);
+      if (!fila || !confirm(mensaje(fila))) return;
+      const { error } = await sb.from(tabla).delete().eq('id', fila.id);
+      if (error) return alert('No se pudo eliminar: ' + error.message);
+      despues(fila);
+      dlg.close();
+      cargar();
+    };
+  }
+
+  // Achica la foto antes de subirla (los celulares sacan fotos de varios MB)
+  async function achicar(archivo, max = 800) {
+    const img = await createImageBitmap(archivo);
+    const k = Math.min(1, max / Math.max(img.width, img.height));
+    const c = document.createElement('canvas');
+    c.width = Math.round(img.width * k);
+    c.height = Math.round(img.height * k);
+    c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+    return new Promise(r => c.toBlob(r, 'image/jpeg', 0.8));
+  }
+
+  // ---------- Registro rápido ----------
+  // [tipo en la base, ícono, nombre, pregunta para la nota (si pide)]
+  const TIPOS = [
+    ['paseo', '🦮', 'Paseo'], ['comida', '🍖', 'Comida', '¿Qué comió?'], ['premio', '🦴', 'Premio', '¿Qué premio?'], ['salida', '🚪', 'Salida'],
+    ['medicina', '💊', 'Medicina', '¿Qué medicina?'], ['bano', '🛁', 'Baño'], ['sintoma', '🤒', 'Síntoma', '¿Qué pasó?'],
+    ['conducta', '🐕', 'Conducta', '¿Qué pasó?'], ['otro', '📝', 'Otro', '¿Qué pasó?']
+  ];
+
+  // comida del plan con la hora más cercana a ahora, para sugerirla al registrar
+  function comidaDelPlan(mascotaId) {
+    const ahora = new Date(), min = ahora.getHours() * 60 + ahora.getMinutes();
+    const dist = p => Math.abs((p.hora ? +p.hora.slice(0, 2) * 60 + +p.hora.slice(3, 5) : 720) - min);
+    return plan.filter(p => p.mascota_id === mascotaId && p.activo).sort((a, b) => dist(a) - dist(b))[0];
+  }
+  let elegida = null;
+  try { elegida = localStorage.getItem('mascota'); } catch {}
+
+  $('botones').innerHTML = TIPOS.map(([t, i, n]) => `<button data-tipo="${t}"><span aria-hidden="true">${i}</span>${n}</button>`).join('');
+
+  function dibujarElegir() {
+    if (!mascotas.some(x => x.id === elegida)) elegida = mascotas[0]?.id ?? null;
+    $('registrar').hidden = !elegida;
+    $('elegir-mascota').hidden = mascotas.length < 2; // con una sola mascota no hace falta elegir
+    $('elegir-mascota').innerHTML = mascotas.map(x =>
+      `<button data-id="${x.id}" aria-pressed="${x.id === elegida}">${esc(x.nombre)}</button>`).join('');
+    dibujarPeso();
+    dibujarCrono();
+    dibujarComida();
+  }
+
+  $('elegir-mascota').onclick = e => {
+    const b = e.target.closest('[data-id]');
+    if (!b) return;
+    elegida = b.dataset.id;
+    try { localStorage.setItem('mascota', elegida); } catch {}
+    dibujarElegir();
+  };
+
+  $('botones').onclick = async e => {
+    const b = e.target.closest('[data-tipo]');
+    if (!b || !elegida) return;
+    const [tipo, icono, nombre, pregunta] = TIPOS.find(x => x[0] === b.dataset.tipo);
+    const m = mascotas.find(x => x.id === elegida); // fija la mascota por si cambian la selección mientras guarda
+    let nota = null, cantidad = null;
+    if (tipo === 'sintoma') return abrirSintoma(m);
+    if (pregunta) {
+      const sugerida = tipo === 'comida' ? comidaDelPlan(m.id) : null;
+      nota = prompt(`${nombre} · ${m.nombre}: ${pregunta}`, sugerida?.alimento ?? '');
+      if (nota === null) return;
+      nota = nota.trim() || null;
+      if (sugerida?.gramos && nota === sugerida.alimento) cantidad = sugerida.gramos + ' g';
+      if (nota && !confirmarReglas(nota, m.id, tipo === 'comida' || tipo === 'premio')) return;
+    }
+    b.disabled = true;
+    const { data, error } = await sb.from('eventos').insert({ mascota_id: m.id, tipo, nota, cantidad }).select('id').single();
+    b.disabled = false;
+    if (error) return alert('No se pudo registrar: ' + error.message);
+    const hora = new Date().toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' });
+    avisar(`${icono} ${nombre} · ${m.nombre} · ${hora}`, data.id);
+    cargar();
+  };
+
+  // Aviso con "Deshacer" por si fue un toque sin querer
+  let ultimoEvento = null, timerAviso;
+  function avisar(texto, id) {
+    ultimoEvento = id;
+    $('toast').firstElementChild.textContent = texto;
+    $('toast').hidden = false;
+    clearTimeout(timerAviso);
+    timerAviso = setTimeout(() => { $('toast').hidden = true; }, 6000);
+  }
+  $('deshacer').onclick = async () => {
+    $('toast').hidden = true;
+    const { error } = await sb.from('eventos').delete().eq('id', ultimoEvento);
+    if (error) alert('No se pudo deshacer: ' + error.message);
+    cargar();
+  };
+
+  // ---------- Historial ----------
+  const PAGINA = 50;
+  let eventos = [], pedido = 0;
+  const tipoOpciones = TIPOS.map(([t, i, n]) => `<option value="${t}">${i} ${n}</option>`).join('');
+  $('f-tipo').innerHTML = '<option value="">Todos los tipos</option>' + tipoOpciones;
+  $('dlg-evento').querySelector('[name=tipo]').innerHTML = tipoOpciones;
+
+  // ISO de la base -> valor para <input type="datetime-local"> en hora local
+  function aLocal(fecha) {
+    const d = new Date(fecha);
+    d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+    return d.toISOString().slice(0, 16);
+  }
+
+  function tituloDia(d) {
+    const hoy = new Date(), ayer = new Date();
+    ayer.setDate(hoy.getDate() - 1);
+    if (d.toDateString() === hoy.toDateString()) return 'Hoy';
+    if (d.toDateString() === ayer.toDateString()) return 'Ayer';
+    return d.toLocaleDateString('es', { weekday: 'long', day: 'numeric', month: 'long',
+      year: d.getFullYear() === hoy.getFullYear() ? undefined : 'numeric' });
+  }
+
+  async function cargarHistorial(siguientePagina = false) {
+    const n = ++pedido; // si llegan dos cargas a la vez, solo vale la última
+    const base = siguientePagina ? eventos : [];
+    let q = sb.from('eventos').select('*').order('fecha_hora', { ascending: false }).order('id')
+      .range(base.length, base.length + PAGINA - 1);
+    if ($('f-mascota').value) q = q.eq('mascota_id', $('f-mascota').value);
+    if ($('f-tipo').value) q = q.eq('tipo', $('f-tipo').value);
+    const { data, error } = await q;
+    if (n !== pedido) return;
+    if (error) return ($('historial').textContent = 'Error al cargar el historial: ' + error.message);
+    eventos = base.concat(data);
+    $('mas').hidden = data.length < PAGINA;
+
+    let html = '', diaAnterior = '';
+    for (const ev of eventos) {
+      const d = new Date(ev.fecha_hora), dia = tituloDia(d);
+      if (dia !== diaAnterior) { html += `<h3>${esc(dia)}</h3>`; diaAnterior = dia; }
+      const [, icono, nombre] = TIPOS.find(x => x[0] === ev.tipo) || ['', '•', ev.tipo];
+      const detalle = [
+        mascotas.length > 1 && mascotas.find(x => x.id === ev.mascota_id)?.nombre,
+        ev.duracion_min != null && ev.duracion_min + ' min', ev.cantidad, ev.nota, quien(ev.creado_por, 'por ')
+      ].filter(Boolean).join(' · ');
+      html += `<button class="evento" data-id="${ev.id}">
+        <b>${d.toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' })}</b>${icono} ${esc(nombre)}
+        ${detalle ? `<small class="muted">${esc(detalle)}</small>` : ''}</button>`;
+    }
+    $('historial').innerHTML = html || '<p class="muted">Sin registros.</p>';
+  }
+
+  $('f-mascota').onchange = $('f-tipo').onchange = () => cargarHistorial();
+  $('mas').onclick = () => cargarHistorial(true);
+
+  const dlgE = $('dlg-evento');
+  $('registro-manual').onclick = () => abrir(dlgE, { mascota_id: elegida, tipo: 'paseo', fecha_hora: aLocal(new Date()) });
+  $('historial').onclick = e => {
+    const b = e.target.closest('[data-id]');
+    const ev = b && eventos.find(x => x.id === b.dataset.id);
+    if (ev) abrir(dlgE, { ...ev, fecha_hora: aLocal(ev.fecha_hora) });
+  };
+  alEnviar(dlgE, f => {
+    const e = f.elements, texto = [e.cantidad.value, e.nota.value].join(' ').trim();
+    if (texto && !confirmarReglas(texto, e.mascota_id.value, e.tipo.value === 'comida' || e.tipo.value === 'premio')) throw CANCELADO;
+    return guardar('eventos', f, { fecha_hora: new Date(e.fecha_hora.value).toISOString() });
+  });
+  alBorrar(dlgE, 'eventos', () => eventos, () => '¿Eliminar este registro?');
+
+  // ---------- Reglas y plan: formularios ----------
+  const dlgR = $('dlg-regla');
+  $('nueva-regla').onclick = () => abrir(dlgR, { mascota_id: elegida, tipo: 'alergia', origen: 'yo', activa: true });
+  $('lista-reglas').onclick = e => {
+    const b = e.target.closest('button[data-id]');
+    const r = b && reglas.find(x => x.id === b.dataset.id);
+    if (r) abrir(dlgR, { ...r, sinonimos: r.sinonimos.join(', ') });
+  };
+  // sugiere sinónimos para que el usuario los revise (solo si el campo está vacío)
+  dlgR.querySelector('[name=sustancia]').onchange = e => {
+    const s = dlgR.querySelector('[name=sinonimos]');
+    if (!s.value.trim()) s.value = sugerirSinonimos(e.target.value).join(', ');
+  };
+  alEnviar(dlgR, f => guardar('reglas', f, { sinonimos: lista(f.elements.sinonimos.value) }));
+  alBorrar(dlgR, 'reglas', () => reglas, r => `¿Eliminar la regla "${r.sustancia}"? La app dejará de protegerte contra eso.\n\n(Si solo quieres pausarla, cancela y desmarca "Activa".)`);
+
+  const dlgP = $('dlg-plan');
+  $('nuevo-plan').onclick = () => abrir(dlgP, { mascota_id: elegida, activo: true });
+  $('lista-plan').onclick = e => {
+    const b = e.target.closest('button[data-id]');
+    const p = b && plan.find(x => x.id === b.dataset.id);
+    if (p) abrir(dlgP, { ...p, hora: p.hora?.slice(0, 5) });
+  };
+  alEnviar(dlgP, f => {
+    if (!confirmarReglas(f.elements.alimento.value, f.elements.mascota_id.value, true)) throw CANCELADO;
+    return guardar('plan_alimentacion', f);
+  });
+  alBorrar(dlgP, 'plan_alimentacion', () => plan, p => `¿Quitar "${p.alimento}" del plan?`);
+
+  // ---------- Salud ----------
+  const ICONO_SALUD = { vacuna: '💉', desparasitacion: '🪱', consulta: '🩺', cirugia: '🏥', analisis: '🧪', peluqueria: '✂️', dental: '🦷' };
+  const hoyISO = () => new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD en hora local
+  const diasHasta = f => Math.round((new Date(f + 'T00:00') - new Date(hoyISO() + 'T00:00')) / 864e5);
+  const fmtFecha = f => new Date(f + 'T00:00').toLocaleDateString('es', { day: 'numeric', month: 'short', year: 'numeric' });
+  const fmtHora = d => d.toLocaleString('es', { weekday: 'short', hour: '2-digit', minute: '2-digit' });
+
+  // Por cada mascota+tipo+detalle vale solo el registro más reciente: si ya se renovó la vacuna, la fecha vieja no cuenta.
+  function proximos() {
+    const ultimo = {};
+    for (const s of salud) { // viene ordenado por fecha descendente
+      const k = s.mascota_id + '|' + s.tipo + '|' + normalizar(s.detalle);
+      if (!(k in ultimo)) ultimo[k] = s;
+    }
+    return Object.values(ultimo).filter(s => s.proxima_fecha).sort((a, b) => a.proxima_fecha.localeCompare(b.proxima_fecha));
+  }
+
+  // fecha de la próxima dosis: última toma registrada que nombra el medicamento + cada_horas
+  function proximaDosis(med) {
+    const t = tomas.find(t => t.mascota_id === med.mascota_id && contiene(t.nota, med.nombre));
+    return t && med.cada_horas ? new Date(new Date(t.fecha_hora).getTime() + med.cada_horas * 36e5) : null;
+  }
+
+  function dibujarSalud(nombreDe) {
+    $('lista-proximos').innerHTML = proximos().map(s => {
+      const d = diasHasta(s.proxima_fecha);
+      const cuando = d < 0 ? `vencido hace ${-d} día${d === -1 ? '' : 's'}` : d === 0 ? 'hoy' : `en ${d} día${d === 1 ? '' : 's'}`;
+      return `<li${d <= 7 ? ' class="alerta"' : ''}>${ICONO_SALUD[s.tipo]} ${esc(s.detalle || s.tipo)}
+        <small>${esc([nombreDe(s.mascota_id), fmtFecha(s.proxima_fecha)].filter(Boolean).join(' · '))} — ${cuando}</small></li>`;
+    }).join('') || '<li class="muted">Nada pendiente.</li>';
+
+    const hoy = hoyISO();
+    $('lista-meds').innerHTML = meds.map(x => {
+      const activo = !x.hasta || x.hasta >= hoy;
+      const prox = activo && proximaDosis(x);
+      return `<li${activo ? '' : ' class="muted"'}><button data-id="${x.id}">💊 ${esc(x.nombre)}</button>
+        <small class="muted">${esc([x.dosis, x.cada_horas && `cada ${x.cada_horas} h`, nombreDe(x.mascota_id),
+          x.hasta && (activo ? 'hasta ' : 'terminó ') + fmtFecha(x.hasta)].filter(Boolean).join(' · '))}</small>
+        ${activo ? `<button class="dar" data-dar="${x.id}">Dar ahora</button>` : ''}
+        ${prox ? `<small class="${prox < new Date() ? 'alerta' : 'muted'}" style="width:100%">Próxima dosis: ${fmtHora(prox)}${prox < new Date() ? ' (atrasada)' : ''}</small>` : ''}</li>`;
+    }).join('') || '<li class="muted">Sin medicamentos.</li>';
+
+    $('lista-salud').innerHTML = salud.map(s => `
+      <li><button data-id="${s.id}">${ICONO_SALUD[s.tipo]} ${esc(s.detalle || s.tipo)}</button>
+      <small class="muted">${esc([fmtFecha(s.fecha), nombreDe(s.mascota_id), s.veterinario].filter(Boolean).join(' · '))}</small></li>`).join('')
+      || '<li class="muted">Sin registros de salud.</li>';
+
+    $('vets').innerHTML = contactos.filter(c => c.tipo === 'veterinario').map(c => `<option value="${esc(c.nombre)}">`).join('');
+  }
+
+  // Peso de la mascota elegida arriba, con gráfico SVG simple (sin librerías)
+  function dibujarPeso() {
+    const m = mascotas.find(x => x.id === elegida);
+    const ps = pesos.filter(p => p.mascota_id === elegida);
+    $('titulo-peso').textContent = m && mascotas.length > 1 ? `Peso de ${m.nombre}` : 'Peso';
+    const rango = m && rangoRaza(m.raza), ultimoKg = ps.length ? +ps[ps.length - 1].kg : null;
+    const fuera = rango && ultimoKg != null && (ultimoKg < rango.min || ultimoKg > rango.max);
+    $('grafico-peso').innerHTML = grafico(ps) + (rango
+      ? `<p class="${fuera ? 'alerta' : 'muted'}">Rango habitual ${esc(rango.nombre)}: ${rango.min}–${rango.max} kg${fuera ? ' · está fuera del rango, consúltalo con el veterinario' : ''}</p>` : '');
+    $('lista-peso').innerHTML = ps.slice(-5).reverse().map((p, i, arr) => {
+      const ant = arr[i + 1], dif = ant ? (p.kg - ant.kg).toFixed(2) : null;
+      return `<li><button data-id="${p.id}">${p.kg} kg</button><small class="muted">${fmtFecha(p.fecha)}${dif ? ` · ${dif > 0 ? '+' : ''}${dif} kg` : ''}</small></li>`;
+    }).join('') || '<li class="muted">Sin pesos registrados.</li>';
+  }
+
+  function grafico(ps) {
+    if (ps.length < 2) return '';
+    const W = 320, H = 120, P = 28;
+    const xs = ps.map(p => new Date(p.fecha + 'T00:00').getTime()), ys = ps.map(p => +p.kg);
+    const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+    const sx = x => P + (x1 === x0 ? 0.5 : (x - x0) / (x1 - x0)) * (W - 2 * P);
+    const sy = y => H - 16 - (y1 === y0 ? 0.5 : (y - y0) / (y1 - y0)) * (H - 32);
+    const pts = xs.map((x, i) => `${sx(x).toFixed(1)},${sy(ys[i]).toFixed(1)}`);
+    return `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Peso entre ${y0} y ${y1} kg">
+      <polyline points="${pts.join(' ')}" fill="none" stroke="var(--accent)" stroke-width="2"/>
+      ${pts.map(p => `<circle cx="${p.split(',')[0]}" cy="${p.split(',')[1]}" r="3" fill="var(--accent)"/>`).join('')}
+      <text x="0" y="${sy(y1) + 4}" font-size="10" fill="var(--muted)">${y1}</text>
+      <text x="0" y="${sy(y0) + 4}" font-size="10" fill="var(--muted)">${y0}</text></svg>`;
+  }
+
+  const dlgS = $('dlg-salud');
+  $('nueva-salud').onclick = () => abrir(dlgS, { mascota_id: elegida, tipo: 'vacuna', fecha: hoyISO() });
+  $('lista-salud').onclick = e => {
+    const b = e.target.closest('button[data-id]');
+    const s = b && salud.find(x => x.id === b.dataset.id);
+    if (s) abrir(dlgS, s);
+  };
+  alEnviar(dlgS, f => guardar('salud', f));
+  alBorrar(dlgS, 'salud', () => salud, () => '¿Eliminar este registro de salud?');
+
+  const dlgMed = $('dlg-med');
+  $('nuevo-med').onclick = () => abrir(dlgMed, { mascota_id: elegida, desde: hoyISO() });
+  $('lista-meds').onclick = async e => {
+    const dar = e.target.closest('[data-dar]');
+    if (dar) {
+      const x = meds.find(m => m.id === dar.dataset.dar);
+      if (!confirmarReglas(x.nombre, x.mascota_id)) return;
+      dar.disabled = true;
+      const { data, error } = await sb.from('eventos')
+        .insert({ mascota_id: x.mascota_id, tipo: 'medicina', nota: x.nombre, cantidad: x.dosis }).select('id').single();
+      dar.disabled = false;
+      if (error) return alert('No se pudo registrar: ' + error.message);
+      avisar(`💊 ${x.nombre} · ${mascotas.find(m => m.id === x.mascota_id)?.nombre ?? ''}`, data.id);
+      return cargar();
+    }
+    const b = e.target.closest('button[data-id]');
+    const x = b && meds.find(m => m.id === b.dataset.id);
+    if (x) abrir(dlgMed, x);
+  };
+  alEnviar(dlgMed, f => {
+    if (!confirmarReglas(f.elements.nombre.value, f.elements.mascota_id.value)) throw CANCELADO;
+    return guardar('medicamentos', f);
+  });
+  alBorrar(dlgMed, 'medicamentos', () => meds, x => `¿Eliminar el medicamento ${x.nombre}?`);
+
+  const dlgPeso = $('dlg-peso');
+  $('nuevo-peso').onclick = () => abrir(dlgPeso, { mascota_id: elegida, fecha: hoyISO() });
+  $('lista-peso').onclick = e => {
+    const b = e.target.closest('button[data-id]');
+    const p = b && pesos.find(x => x.id === b.dataset.id);
+    if (p) abrir(dlgPeso, p);
+  };
+  alEnviar(dlgPeso, f => guardar('peso', f));
+  alBorrar(dlgPeso, 'peso', () => pesos, p => `¿Eliminar el peso ${p.kg} kg del ${fmtFecha(p.fecha)}?`);
+
+  // ---------- Pestañas ----------
+  function verTab(t) {
+    document.querySelectorAll('[data-tab]').forEach(s => { s.hidden = s.dataset.tab !== t; });
+    document.querySelectorAll('#tabs button').forEach(b => b.setAttribute('aria-current', b.dataset.ir === t ? 'page' : 'false'));
+    try { localStorage.setItem('tab', t); } catch {}
+    scrollTo(0, 0);
+  }
+  $('tabs').onclick = e => { const b = e.target.closest('[data-ir]'); if (b) verTab(b.dataset.ir); };
+  let tabGuardada = 'hoy';
+  try { tabGuardada = localStorage.getItem('tab') || 'hoy'; } catch {}
+  verTab(['hoy', 'mascotas', 'comida', 'salud', 'historial'].includes(tabGuardada) ? tabGuardada : 'hoy');
+
+  // ---------- Panel "Hoy": lo que la app aprendió y lo que falta (lógica en aprende.js) ----------
+  function dibujarHoy() {
+    const ahora = new Date();
+    $('panel-hoy').innerHTML = mascotas.map(m => {
+      const evs = recientes.filter(e => e.mascota_id === m.id); // ordenados del más nuevo al más viejo
+      const avisos = [], info = [];
+      const ultimo = t => evs.find(e => e.tipo === t);
+      info.push([['paseo', '🦮', 'Último paseo'], ['comida', '🍖', 'Última comida']].map(([t, i, n]) => {
+        const e = ultimo(t);
+        return `${i} ${n}: ${e ? hace(new Date(e.fecha_hora), ahora) + quien(e.creado_por, ', por ') : 'sin registros'}`;
+      }).join(' · '));
+
+      const rs = resumenSemana(evs, ahora);
+      if (rs.bajo) avisos.push(`🦮 Esta semana paseó bastante menos: ${paseos(rs.paseos)} contra ${rs.paseosAnt} la semana anterior`);
+      if (rs.paseos || rs.paseosAnt) info.push(`📊 Últimos 7 días: ${rs.paseos} paseos${rs.minutos ? ` (${duracionTxt(rs.minutos)})` : ''} · 7 días anteriores: ${rs.paseosAnt}`);
+
+      for (const f of pendientesHoy(evs, plan.filter(p => p.mascota_id === m.id), ahora)) {
+        avisos.push(f.fuente === 'plan' ? `🍖 Falta la comida del plan: ${f.alimento} (${hhmm(f.min)})`
+          : `${f.tipo === 'paseo' ? '🦮 Normalmente pasea' : '🍖 Normalmente come'} a las ${hhmm(f.min)} y hoy todavía no`);
+      }
+      const planActivo = plan.filter(p => p.mascota_id === m.id && p.activo).length;
+      const comidasHoy = evs.filter(e => e.tipo === 'comida' && new Date(e.fecha_hora).toDateString() === ahora.toDateString()).length;
+      if (planActivo && comidasHoy > planActivo) avisos.push(`🍖 Hoy comió ${comidasHoy} veces; el plan dice ${planActivo}`);
+
+      for (const s of proximos().filter(s => s.mascota_id === m.id && diasHasta(s.proxima_fecha) <= 7)) {
+        const d = diasHasta(s.proxima_fecha);
+        avisos.push(`${ICONO_SALUD[s.tipo]} ${s.detalle || s.tipo}: ${d < 0 ? `vencido hace ${-d} días` : d === 0 ? 'toca hoy' : `en ${d} días`}`);
+      }
+      for (const x of meds.filter(x => x.mascota_id === m.id && (!x.hasta || x.hasta >= hoyISO()))) {
+        const prox = proximaDosis(x);
+        if (prox && prox < ahora) avisos.push(`💊 ${x.nombre}: dosis atrasada (tocaba ${fmtHora(prox)})`);
+        else if (prox && prox.toDateString() === ahora.toDateString()) info.push(`💊 ${x.nombre}: próxima dosis ${fmtHora(prox)}`);
+      }
+
+      const sintomas = evs.filter(e => e.tipo === 'sintoma' && ahora - new Date(e.fecha_hora) <= 7 * 864e5);
+      if (sintomas.length >= 2) {
+        const vet = contactos.find(c => c.tipo === 'veterinario');
+        avisos.push(`🤒 ${sintomas.length} síntomas en 7 días (${sintomas.map(e => e.nota).filter(Boolean).slice(0, 3).join(', ') || 'sin detalle'}). ` +
+          `Si sigue, consulta al veterinario${vet ? `: ${vet.nombre}${vet.telefono ? ' ' + vet.telefono : ''}` : ''}.`);
+      }
+
+      const cp = cambioPeso(pesos.filter(p => p.mascota_id === m.id));
+      if (cp?.alerta) avisos.push(`⚖️ ${cp.pct > 0 ? 'Subió' : 'Bajó'} ${Math.abs(cp.pct).toFixed(1)} % de peso en ${cp.dias} días`);
+
+      const hab = ['comida', 'paseo'].map(t => [t, horariosHabituales(evs, t, ahora)]);
+      const aprendido = hab.filter(([, h]) => h?.length)
+        .map(([t, h]) => `${t === 'comida' ? 'come' : 'pasea'} ~${h.map(x => hhmm(x.min)).join(', ')}`);
+      info.push(aprendido.length ? `📈 Aprendí que ${aprendido.join(' y ')}`
+        : '📈 Aprendiendo sus horarios: con 5 días de registros empiezo a avisarte.');
+
+      avisosRaza(m, evs, ahora, avisos, info);
+      const alergias = alergiasDe(m.id).map(r => r.sustancia);
+      return `<div class="hoy"><h3>${esc(m.nombre)}</h3>
+        ${alergias.length ? `<p class="alerta">⛔ Alergia: ${esc(alergias.join(', '))}</p>` : ''}
+        ${avisos.map(a => `<p class="alerta">${esc(a)}</p>`).join('') || '<p class="ok">✓ Todo en orden por ahora</p>'}
+        ${info.map(i => `<p class="muted">${esc(i)}</p>`).join('')}</div>`;
+    }).join('') || '<p class="muted">Agrega tu primera mascota en la pestaña 🐾 Mascotas.</p>';
+  }
+  setInterval(() => { if (usuario) { dibujarHoy(); dibujarCrono(); } }, 30000); // refresca "hace X", avisos y cronómetro
+
+  // Al volver a la app (otra pestaña o celular desbloqueado) recarga, para ver lo que registró el otro usuario
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && usuario) cargar(); });
+
+  // "juan@ejemplo.com" -> "juan"; el usuario actual es "ti"
+  const quien = (email, prefijo = '') => email ? prefijo + (email === usuario?.email ? 'ti' : email.split('@')[0]) : '';
+  const paseos = n => `${n} paseo${n === 1 ? '' : 's'}`;
+  const duracionTxt = min => min >= 60 ? `${Math.floor(min / 60)} h ${min % 60} min` : `${min} min`;
+
+  // ---------- Paseo con cronómetro (el inicio se guarda en el navegador: sigue contando si se cierra la app) ----------
+  let crono = null;
+  try { crono = JSON.parse(localStorage.getItem('crono')); } catch {}
+  const guardarCrono = () => { try { crono ? localStorage.setItem('crono', JSON.stringify(crono)) : localStorage.removeItem('crono'); } catch {} };
+
+  function dibujarCrono() {
+    const m = crono && mascotas.find(x => x.id === crono.mascota_id);
+    $('crono').textContent = crono
+      ? `⏹️ Terminar paseo${m ? ' de ' + m.nombre : ''} · ${Math.floor((Date.now() - crono.inicio) / 6e4)} min`
+      : '⏱️ Iniciar paseo con cronómetro';
+  }
+  dibujarCrono();
+
+  $('crono').onclick = async () => {
+    if (!crono) {
+      if (!elegida) return;
+      crono = { mascota_id: elegida, inicio: Date.now() };
+      guardarCrono();
+      return dibujarCrono();
+    }
+    const min = Math.round((Date.now() - crono.inicio) / 6e4);
+    const m = mascotas.find(x => x.id === crono.mascota_id);
+    if (!m || min < 1) { // mascota borrada o tocado sin querer
+      if (confirm(min < 1 ? '¿Descartar el paseo? Duró menos de 1 minuto.' : 'La mascota ya no existe. ¿Descartar el paseo?')) {
+        crono = null; guardarCrono(); dibujarCrono();
+      }
+      return;
+    }
+    $('crono').disabled = true;
+    const { data, error } = await sb.from('eventos')
+      .insert({ mascota_id: m.id, tipo: 'paseo', fecha_hora: new Date(crono.inicio).toISOString(), duracion_min: min }).select('id').single();
+    $('crono').disabled = false;
+    if (error) return alert('No se pudo guardar el paseo (el cronómetro sigue): ' + error.message);
+    crono = null; guardarCrono(); dibujarCrono();
+    avisar(`🦮 Paseo de ${duracionTxt(min)} · ${m.nombre}`, data.id);
+    cargar();
+  };
+
+  const nombreMascota = id => mascotas.find(x => x.id === id)?.nombre;
+  const sinParentesis = s => s.replace(/\s*\(.*\)$/, ''); // "Pollo (pechuga sin piel)" -> "Pollo"
+
+  // ---------- Síntomas con un toque ----------
+  const dlgSin = $('dlg-sintoma');
+  let sintomaDe = null;
+  $('chips-sintoma').innerHTML = SINTOMAS.map(s => `<button type="button" aria-pressed="false">${esc(s)}</button>`).join('');
+  $('chips-sintoma').onclick = e => {
+    const b = e.target.closest('button');
+    if (b) b.setAttribute('aria-pressed', b.getAttribute('aria-pressed') !== 'true');
+  };
+  function abrirSintoma(m) {
+    sintomaDe = m;
+    dlgSin.querySelector('form').reset();
+    dlgSin.querySelectorAll('#chips-sintoma button').forEach(b => b.setAttribute('aria-pressed', 'false'));
+    dlgSin.querySelector('h3').textContent = `🤒 Síntoma · ${m.nombre}`;
+    dlgSin.showModal();
+  }
+  dlgSin.querySelector('form').addEventListener('submit', async e => {
+    e.preventDefault();
+    const marcados = [...dlgSin.querySelectorAll('#chips-sintoma [aria-pressed="true"]')].map(b => b.textContent);
+    const nota = [...marcados, e.target.elements.detalle.value.trim()].filter(Boolean).join(', ');
+    if (!nota) return alert('Marca al menos un síntoma o escribe un detalle.');
+    const { data, error } = await sb.from('eventos').insert({ mascota_id: sintomaDe.id, tipo: 'sintoma', nota }).select('id').single();
+    if (error) return alert('No se pudo registrar: ' + error.message);
+    dlgSin.close();
+    avisar(`🤒 ${nota} · ${sintomaDe.nombre}`, data.id);
+    cargar();
+  });
+
+  // ---------- Avisos extra en "Hoy": síntomas graves, ingredientes en prueba, inventario y raza ----------
+  function avisosRaza(m, evs, ahora, avisos, info) {
+    const sch = esSchnauzer(m.raza);
+    const vet = contactos.find(c => c.tipo === 'veterinario');
+    const llamar = vet ? ` Llama a ${vet.nombre}${vet.telefono ? ' ' + vet.telefono : ''}.` : ' Llama al veterinario.';
+    const textos = {
+      pancreatitis: `🚨 Vómito con dolor abdominal o decaimiento: ${sch ? 'en un Schnauzer ' : ''}puede ser pancreatitis.` + llamar,
+      diabetes: '🚨 Mucha sed y orina mucho: puede ser diabetes o un problema renal. Consulta al veterinario.',
+      urinario: `🚨 Sangre en la orina: puede ser un cálculo urinario${sch ? ' (frecuente en Schnauzer)' : ''}.` + llamar,
+    };
+    for (const a of alertasSintomas(evs, ahora)) avisos.unshift(textos[a]);
+
+    for (const x of ingMascota.filter(x => x.mascota_id === m.id && x.estado === 'probando')) {
+      const ing = CATALOGO.find(i => i.id === x.ingrediente);
+      if (!ing) continue;
+      const desde = new Date(x.desde + 'T00:00'), dias = Math.floor((ahora - desde) / 864e5);
+      if (evs.some(e => e.tipo === 'sintoma' && new Date(e.fecha_hora) >= desde))
+        avisos.push(`🧪 Probando ${ing.nombre}: hubo síntomas desde que empezó. Considera marcarlo ⛔ en 🍖 Comida.`);
+      else if (dias >= 5) avisos.push(`🧪 Lleva ${dias} días probando ${ing.nombre} sin síntomas: márcalo ✅ en 🍖 Comida.`);
+      else info.push(`🧪 Probando ${ing.nombre} (día ${dias + 1} de 5)`);
+    }
+
+    for (const i of inventario.filter(i => i.activo && (!i.mascota_id || i.mascota_id === m.id))) {
+      const g = consumoDiario(i), s = g && seAcaba(i, g, ahora);
+      if (s && s.dias <= 5) avisos.push(`🛒 ${i.alimento}: ${s.dias === 0 ? 'se acaba hoy' : `se acaba en ${s.dias} día${s.dias === 1 ? '' : 's'}`}`);
+    }
+
+    const premios = evs.filter(e => e.tipo === 'premio' && new Date(e.fecha_hora).toDateString() === ahora.toDateString()).length;
+    if (premios) info.push(`🦴 Premios hoy: ${premios} (que no pasen del 10 % de sus calorías)`);
+
+    if (!sch) return;
+    const ultimoDe = tipo => salud.find(s => s.mascota_id === m.id && s.tipo === tipo); // salud viene ordenada por fecha desc
+    const an = ultimoDe('analisis');
+    if (m.fecha_nacimiento && mesesDesde(m.fecha_nacimiento) >= 60 && (!an || diasHasta(an.fecha) < -365))
+      avisos.push('🧪 Toca el análisis de sangre anual (lípidos y glucosa): recomendado en Schnauzer desde los 5 años.');
+    const pel = ultimoDe('peluqueria');
+    if (!pel) info.push('✂️ Registra el último corte en 🩺 Salud (Peluquería) y te recuerdo el próximo (cada 6–8 semanas).');
+    else if (!pel.proxima_fecha && diasHasta(pel.fecha) < -56) avisos.push(`✂️ Hace ${Math.floor(-diasHasta(pel.fecha) / 7)} semanas del último corte (cada 6–8 semanas).`);
+    const com = evs.find(e => e.tipo === 'comida');
+    if (com && ahora - new Date(com.fecha_hora) < 36e5) info.push('🧔 Recién comió: límpiale la barba (evita manchas y hongos).');
+  }
+
+  // ---------- Comida: ingredientes, calorías, menú, inventario (lógica en comida.js) ----------
+  const ICONO_ESTADO = { tolera: '✅', probando: '🧪', alergico: '⛔' };
+  const textoIng = i => [i.nombre, ...i.sinonimos].join(', ');
+  // ⛔ sale SOLO de una regla de alergia activa (si la desactivan en Reglas, deja de mostrarse ⛔); ✅ y 🧪 de lo marcado
+  function estadoIng(mascotaId, ing) {
+    if (chocan(textoIng(ing), reglasDe(mascotaId)).some(r => r.tipo === 'alergia')) return 'alergico';
+    const est = ingMascota.find(x => x.mascota_id === mascotaId && x.ingrediente === ing.id)?.estado;
+    return est === 'alergico' ? null : est || null;
+  }
+  // ingredientes de un grupo que no chocan con reglas ni tóxicos; los ✅ primero
+  function disponibles(m, grupo) {
+    return CATALOGO.filter(i => i.grupo === grupo && !chocan(textoIng(i), [...reglasDe(m.id), ...TOXICOS]).length)
+      .sort((a, b) => (estadoIng(m.id, b) === 'tolera') - (estadoIng(m.id, a) === 'tolera'));
+  }
+  function kcalMascota(m) {
+    const ps = pesos.filter(p => p.mascota_id === m.id);
+    if (!ps.length) return null;
+    return kcalDiarias({ kg: +ps[ps.length - 1].kg, edadMeses: m.fecha_nacimiento ? mesesDesde(m.fecha_nacimiento) : null,
+      esterilizado: m.esterilizado, actividad: m.actividad, objetivo: m.objetivo, pesoObjetivo: m.peso_objetivo });
+  }
+
+  function dibujarComida() {
+    const m = mascotas.find(x => x.id === elegida);
+    $('titulo-comida').textContent = m && mascotas.length > 1 ? `Comida de ${m.nombre}` : 'Comida';
+    $('lista-toxicos').textContent = TOXICOS.map(t => t.sustancia).join(', ') + '.';
+    dibujarInventario();
+    if (!m) { $('calorias').innerHTML = '<p class="muted">Agrega una mascota primero.</p>'; $('lista-ingredientes').innerHTML = ''; return; }
+
+    const k = kcalMascota(m), rango = rangoRaza(m.raza);
+    $('calorias').innerHTML = k
+      ? `<p><b>${k.kcal} kcal por día</b></p>
+         <p class="muted">${esc(`${pesos.filter(p => p.mascota_id === m.id).pop().kg} kg · ${k.motivo} · RER ${k.rer} × ${k.factor}`)}</p>
+         <p class="muted">🦴 Premios: hasta ${Math.round(k.kcal * 0.1)} kcal/día${rango ? ` · ${esc(rango.nombre)}: ${rango.min}–${rango.max} kg` : ''}</p>
+         <p class="muted">Ajusta actividad y objetivo en la ficha de la mascota (🐾 Mascotas).</p>`
+      : '<p class="muted">Registra su peso en 🩺 Salud para calcular sus calorías.</p>';
+
+    const sch = esSchnauzer(m.raza);
+    $('lista-ingredientes').innerHTML = Object.entries(GRUPOS).map(([g, titulo]) => `<h4>${titulo}</h4>` +
+      CATALOGO.filter(i => i.grupo === g).map(i => {
+        const est = estadoIng(m.id, i);
+        const evitar = !est && chocan(textoIng(i), reglasDe(m.id)).length;
+        const prueba = est === 'probando' && ingMascota.find(x => x.mascota_id === m.id && x.ingrediente === i.id);
+        const notas = [`${i.kcal} kcal`, `${i.grasa} g grasa`, i.grasaAlta && (sch ? '⚠️ grasa alta para Schnauzer' : 'grasa alta'),
+          i.oxalato && 'oxalato alto', evitar && '🚫 en tus reglas', prueba && `probando desde ${fmtFecha(prueba.desde)}`];
+        return `<div class="ing"><span>${esc(i.nombre)}<small class="muted">${esc(notas.filter(Boolean).join(' · '))} · por 100 g</small></span>
+          <span class="estados" data-ing="${i.id}">${Object.entries(ICONO_ESTADO).map(([e, ico]) =>
+            `<button data-e="${e}" aria-pressed="${est === e}" aria-label="${e}">${ico}</button>`).join('')}</span></div>`;
+      }).join('')).join('');
+
+    const f = $('f-menu');
+    for (const [campo, grupo] of [['prot', 'proteina'], ['carb', 'carbohidrato'], ['veg', 'verdura']]) {
+      const sel = f.elements[campo], previo = sel.value;
+      sel.innerHTML = disponibles(m, grupo).map(i => `<option value="${i.id}">${ICONO_ESTADO[estadoIng(m.id, i)] || '❓'} ${esc(i.nombre)}</option>`).join('');
+      if ([...sel.options].some(o => o.value === previo)) sel.value = previo;
+    }
+  }
+
+  $('lista-ingredientes').onclick = async e => {
+    const b = e.target.closest('[data-e]');
+    const m = mascotas.find(x => x.id === elegida);
+    if (!b || !m) return;
+    const ing = CATALOGO.find(i => i.id === b.closest('[data-ing]').dataset.ing);
+    const nuevo = b.dataset.e, actual = estadoIng(m.id, ing);
+    if (nuevo === actual) return;
+    // regla de alergia que cubre este ingrediente, aunque esté inactiva
+    const regla = reglasDe(m.id).find(r => r.tipo === 'alergia' && chocan(textoIng(ing), [{ ...r, activa: true }]).length);
+    if (actual === 'alergico' && regla?.activa &&
+      !confirm(`¿Quitar la alergia "${regla.sustancia}" de ${m.nombre}? La regla quedará inactiva y dejará de proteger.`)) return;
+    b.disabled = true;
+    let { error } = await sb.from('ingredientes_mascota')
+      .upsert({ mascota_id: m.id, ingrediente: ing.id, estado: nuevo, desde: hoyISO() }, { onConflict: 'mascota_id,ingrediente' });
+    if (!error && nuevo === 'alergico' && !regla)
+      ({ error } = await sb.from('reglas').insert({ mascota_id: m.id, tipo: 'alergia', sustancia: sinParentesis(ing.nombre), sinonimos: ing.sinonimos, origen: 'yo' }));
+    else if (!error && nuevo === 'alergico' && !regla.activa)
+      ({ error } = await sb.from('reglas').update({ activa: true }).eq('id', regla.id));
+    if (!error && actual === 'alergico' && regla?.activa)
+      ({ error } = await sb.from('reglas').update({ activa: false }).eq('id', regla.id));
+    b.disabled = false;
+    if (error) alert('No se pudo guardar: ' + error.message);
+    cargar();
+  };
+
+  let ultimoMenu = null;
+  function opcionesMenu() {
+    const f = $('f-menu').elements, m = mascotas.find(x => x.id === elegida), k = m && kcalMascota(m);
+    if (!k) { alert('Registra el peso de la mascota en 🩺 Salud para calcular.'); return null; }
+    if (!f.prot.value || !f.carb.value || !f.veg.value) { alert('No quedan ingredientes disponibles en algún grupo (revisa las alergias).'); return null; }
+    const ing = id => CATALOGO.find(i => i.id === id);
+    return { m, kcalDia: k.kcal, prot: ing(f.prot.value), carb: ing(f.carb.value), veg: ing(f.veg.value), pctCasero: +f.pct.value,
+      kcalKgCroqueta: +f.kcalkg.value || 3600, comidas: Math.min(4, Math.max(1, Math.round(+f.comidas.value) || 2)), reservaPremios: f.premios.checked };
+  }
+  const avisosMenu = (r, o) =>
+    (r.avisos.includes('grasa') ? `<p class="aviso">🥩 Menú alto en grasa${esSchnauzer(o.m.raza) ? ': los Schnauzer son propensos a pancreatitis. Prefiere pavo, pescado blanco, pollo o conejo' : ''}.</p>` : '') +
+    (r.avisos.includes('oxalato') ? '<p class="aviso">🪨 Tiene ingredientes altos en oxalato: si tuvo cálculos urinarios, cámbialos.</p>' : '') +
+    (o.pctCasero > 0 ? '<p class="aviso">💊 <b>Obligatorio:</b> la comida casera sola no cubre calcio, vitaminas ni minerales. Necesita un suplemento indicado por el veterinario. Valida el menú con él antes de usarlo siempre.</p>' : '');
+
+  $('f-menu').onsubmit = e => {
+    e.preventDefault();
+    const o = opcionesMenu();
+    if (!o) return;
+    const r = calcularMenu(o);
+    ultimoMenu = { ...o, r };
+    const filas = r.items.map((it, i) => [it.nombre, r.gramos[i], r.porComida[i]]).filter(x => x[1] > 0);
+    if (r.croquetasG) filas.push(['Croquetas', r.croquetasG, r.porComida[3]]);
+    $('resultado-menu').innerHTML = `
+      <table class="menu"><tr><th>Ingrediente (cocido)</th><th>g/día</th><th>g/comida</th></tr>
+      ${filas.map(x => `<tr><td>${esc(x[0])}</td><td>${x[1]}</td><td>${x[2]}</td></tr>`).join('')}</table>
+      <p class="muted">${o.kcalDia} kcal/día${o.pctCasero ? ` · parte casera ${r.kcal} kcal (proteína ${r.prot} g, grasa ${r.grasa} g = ${r.grasaPct} % de sus calorías)` : ''}${r.kcalPremios ? ` · premios hasta ${r.kcalPremios} kcal` : ''}</p>
+      ${avisosMenu(r, o)}
+      <button id="guardar-menu" type="button">Usar como plan de alimentación</button>`;
+  };
+
+  const HORAS = { 1: ['08:00'], 2: ['08:00', '19:00'], 3: ['08:00', '13:00', '19:00'], 4: ['08:00', '12:00', '16:00', '20:00'] };
+  $('resultado-menu').onclick = async e => {
+    if (e.target.id !== 'guardar-menu' || !ultimoMenu) return;
+    const { m, r, comidas } = ultimoMenu;
+    const partes = r.items.map((it, i) => r.porComida[i] ? `${sinParentesis(it.nombre)} ${r.porComida[i]} g` : null).filter(Boolean);
+    if (r.croquetasG) partes.push(`croquetas ${r.porComida[3]} g`);
+    const alimento = partes.join(' + '), gramos = r.porComida.reduce((s, g) => s + g, 0);
+    if (!confirmarReglas(alimento, m.id, true)) return;
+    const activos = plan.filter(p => p.mascota_id === m.id && p.activo);
+    if (activos.length && confirm(`${m.nombre} ya tiene ${activos.length} comida(s) activas en el plan.\n\n` +
+      'Aceptar: desactivarlas y usar solo este menú.\nCancelar: agregar este menú junto al plan actual.')) {
+      const { error } = await sb.from('plan_alimentacion').update({ activo: false }).in('id', activos.map(p => p.id));
+      if (error) return alert('No se pudo actualizar el plan: ' + error.message);
+    }
+    const { error } = await sb.from('plan_alimentacion').insert(HORAS[comidas].map(hora => ({ mascota_id: m.id, alimento, gramos, hora, activo: true })));
+    if (error) return alert('No se pudo guardar: ' + error.message);
+    alert(`Listo: ${comidas} comida(s) en el plan de ${m.nombre}. Las ves en 🐾 Mascotas → Plan de alimentación.`);
+    cargar();
+  };
+
+  $('menu-semanal').onclick = () => {
+    const o = opcionesMenu();
+    if (!o) return;
+    const grupo = g => { const d = disponibles(o.m, g), ok = d.filter(i => estadoIng(o.m.id, i) === 'tolera'); return ok.length ? ok : d; };
+    const prots = grupo('proteina'), carbs = grupo('carbohidrato'), vegs = grupo('verdura');
+    const { dias, compras } = menuSemanal({ ...o, prots, carbs, vegs });
+    const dia = i => { const d = new Date(); d.setDate(d.getDate() + i); return d.toLocaleDateString('es', { weekday: 'long' }); };
+    const kg = g => g >= 1000 ? (g / 1000).toFixed(2) + ' kg' : g + ' g';
+    const sinProbar = [...prots, ...carbs, ...vegs].some(i => estadoIng(o.m.id, i) !== 'tolera');
+    $('resultado-semanal').innerHTML = `
+      <table class="menu"><tr><th>Día</th><th>Menú (gramos por día)</th></tr>
+      ${dias.map((d, i) => `<tr><td style="text-transform:capitalize">${dia(i)}</td><td>${esc(d.items.map((it, j) => d.gramos[j] ? `${sinParentesis(it.nombre)} ${d.gramos[j]}` : '')
+        .filter(Boolean).concat(d.croquetasG ? [`croquetas ${d.croquetasG}`] : []).join(' + '))}</td></tr>`).join('')}</table>
+      <h4>🛒 Lista de compras (7 días, peso cocido)</h4>
+      <ul>${compras.map(c => `<li>${esc(c.nombre)}<small class="muted" style="margin-left:auto">${kg(c.gramos)}</small></li>`).join('')}</ul>
+      <p class="muted">${sinProbar ? 'Incluye ingredientes ❓ sin probar: márcalos ✅ cuando veas que los tolera. ' : ''}La carne pierde cerca de un 25 % de peso al cocinarse: compra un poco más.</p>
+      ${avisosMenu(dias.reduce((acc, d) => ({ avisos: [...new Set([...acc.avisos, ...d.avisos])] }), { avisos: [] }), o)}`;
+  };
+
+  // gramos por día de una bolsa: el valor puesto a mano, o lo que suma el plan activo que la nombra (solo comidas de un ingrediente)
+  function consumoDiario(inv) {
+    if (inv.gramos_dia) return +inv.gramos_dia;
+    return plan.filter(p => p.activo && p.gramos && !p.alimento.includes('+') && (!inv.mascota_id || p.mascota_id === inv.mascota_id) &&
+      (contiene(p.alimento, inv.alimento) || contiene(inv.alimento, p.alimento))).reduce((s, p) => s + +p.gramos, 0) || null;
+  }
+  function dibujarInventario() {
+    const hoyD = new Date();
+    $('lista-inventario').innerHTML = inventario.filter(i => i.activo).map(i => {
+      const g = consumoDiario(i), s = g && seAcaba(i, g, hoyD);
+      return `<li><button data-id="${i.id}">${esc(i.alimento)}</button><small class="muted">${esc([i.kg + ' kg', nombreMascota(i.mascota_id)].filter(Boolean).join(' · '))}</small>
+        <small class="${s && s.dias <= 5 ? 'alerta' : 'muted'}" style="width:100%">${s
+          ? `Quedan ~${(s.restante / 1000).toFixed(1)} kg · se acaba ${s.dias === 0 ? 'hoy' : esc(s.fecha.toLocaleDateString('es', { weekday: 'long', day: 'numeric', month: 'short' }))} (${g} g/día)`
+          : 'Pon los gramos por día para saber cuándo se acaba'}</small></li>`;
+    }).join('') || '<li class="muted">Sin alimentos cargados.</li>';
+  }
+  const dlgInv = $('dlg-inventario');
+  $('nuevo-inventario').onclick = () => abrir(dlgInv, { abierto: hoyISO(), activo: true });
+  $('lista-inventario').onclick = e => {
+    const b = e.target.closest('button[data-id]');
+    const i = b && inventario.find(x => x.id === b.dataset.id);
+    if (i) abrir(dlgInv, i);
+  };
+  alEnviar(dlgInv, f => guardar('inventario', f));
+  alBorrar(dlgInv, 'inventario', () => inventario, i => `¿Eliminar "${i.alimento}" del inventario?`);
+
+  // ---------- Gastos ----------
+  const ICONO_GASTO = { veterinario: '🩺', comida: '🍖', peluqueria: '✂️', medicinas: '💊', accesorios: '🎾', otros: '📦' };
+  const plata = n => '$' + Math.round(n).toLocaleString('es-CO');
+  function dibujarGastos() {
+    const mes = hoyISO().slice(0, 7), d = new Date();
+    d.setDate(1); d.setMonth(d.getMonth() - 1);
+    const mesAnt = d.toLocaleDateString('en-CA').slice(0, 7);
+    const total = p => gastos.filter(g => g.fecha.startsWith(p)).reduce((s, g) => s + +g.monto, 0);
+    const porCat = {};
+    gastos.filter(g => g.fecha.startsWith(mes)).forEach(g => { porCat[g.categoria] = (porCat[g.categoria] || 0) + +g.monto; });
+    $('resumen-gastos').textContent = `Este mes: ${plata(total(mes))} · mes anterior: ${plata(total(mesAnt))}` +
+      (Object.keys(porCat).length ? ' · ' + Object.entries(porCat).map(([c, v]) => `${ICONO_GASTO[c]} ${plata(v)}`).join('  ') : '');
+    $('lista-gastos').innerHTML = gastos.slice(0, 15).map(g => `<li><button data-id="${g.id}">${ICONO_GASTO[g.categoria]} ${plata(g.monto)}</button>
+      <small class="muted">${esc([fmtFecha(g.fecha), nombreMascota(g.mascota_id), g.nota].filter(Boolean).join(' · '))}</small></li>`).join('')
+      || '<li class="muted">Sin gastos.</li>';
+  }
+  const dlgG = $('dlg-gasto');
+  $('nuevo-gasto').onclick = () => abrir(dlgG, { fecha: hoyISO(), categoria: 'veterinario' });
+  $('lista-gastos').onclick = e => {
+    const b = e.target.closest('button[data-id]');
+    const g = b && gastos.find(x => x.id === b.dataset.id);
+    if (g) abrir(dlgG, g);
+  };
+  alEnviar(dlgG, f => guardar('gastos', f));
+  alBorrar(dlgG, 'gastos', () => gastos, g => `¿Eliminar el gasto de ${plata(g.monto)}?`);
+
+  // ---------- Emergencia ----------
+  $('emergencia').onclick = () => {
+    const tels = contactos.filter(c => c.tipo === 'veterinario' || c.tipo === 'emergencia');
+    $('contenido-emergencia').innerHTML = `
+      <p class="aviso">Si comió algo tóxico, o tiene vómito con dolor abdominal: <b>llama ya</b>. No le provoques el vómito sin que el veterinario lo indique.</p>
+      ${tels.map(c => `<a class="tel" href="tel:${esc((c.telefono || '').replace(/[^\d+]/g, ''))}">📞 ${esc(c.nombre)}<small>${esc(c.tipo)} · ${esc(c.telefono || 'sin teléfono')}</small></a>`).join('')
+        || '<p class="muted">Agrega el veterinario en 🐾 Mascotas → Contactos.</p>'}
+      ${mascotas.map(m => {
+        const al = alergiasDe(m.id).map(r => r.sustancia);
+        const md = meds.filter(x => x.mascota_id === m.id && (!x.hasta || x.hasta >= hoyISO())).map(x => x.nombre + (x.dosis ? ' ' + x.dosis : ''));
+        const pk = pesos.filter(p => p.mascota_id === m.id).pop();
+        return `<h4>${esc(m.nombre)}</h4><p>${esc([m.raza, pk && pk.kg + ' kg', m.fecha_nacimiento && edad(m.fecha_nacimiento)].filter(Boolean).join(' · '))}</p>
+          <p class="alerta">⛔ Alergias: ${esc(al.join(', ') || 'ninguna registrada')}</p><p>💊 Medicamentos: ${esc(md.join(', ') || 'ninguno')}</p>`;
+      }).join('')}
+      <button type="button" class="sec" onclick="document.getElementById('ficha').click()">🖨️ Ficha completa para el veterinario</button>`;
+    $('dlg-emergencia').showModal();
+  };
+
+  // ---------- Ficha para el veterinario (se imprime o se guarda como PDF desde el navegador) ----------
+  $('ficha').onclick = () => {
+    const m = mascotas.find(x => x.id === elegida);
+    if (!m) return;
+    const w = window.open('', '_blank');
+    if (!w) return alert('Permite las ventanas emergentes para ver la ficha.');
+    const fila = (...c) => `<tr>${c.map(x => `<td>${esc(x ?? '')}</td>`).join('')}</tr>`;
+    const tabla = (titulo, cab, filas) => `<h2>${titulo}</h2>` + (filas.length
+      ? `<table><tr>${cab.map(c => `<th>${c}</th>`).join('')}</tr>${filas.join('')}</table>` : '<p>—</p>');
+    const evs = recientes.filter(e => e.mascota_id === m.id && (e.tipo === 'sintoma' || e.tipo === 'conducta'));
+    w.document.write(`<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Ficha de ${esc(m.nombre)}</title>
+      <style>body{font:14px/1.4 system-ui,sans-serif;margin:24px;color:#000}h1{margin:0}h2{font-size:16px;margin:20px 0 6px;border-bottom:1px solid #999}
+      table{border-collapse:collapse;width:100%}td,th{border:1px solid #ccc;padding:4px 6px;text-align:left;vertical-align:top}.alergia{color:#b00;font-weight:bold}</style></head><body>
+      <h1>🐾 ${esc(m.nombre)}</h1>
+      <p>${esc([m.especie, m.raza, m.sexo, m.esterilizado ? 'esterilizado/a' : null, m.fecha_nacimiento && `nació ${fmtFecha(m.fecha_nacimiento)} (${edad(m.fecha_nacimiento)})`].filter(Boolean).join(' · '))}</p>
+      ${m.notas ? `<p>${esc(m.notas)}</p>` : ''}
+      ${tabla('Alergias y reglas', ['Tipo', 'Sustancia', 'Gravedad', 'Sinónimos'], reglasDe(m.id).filter(r => r.activa)
+        .map(r => fila(r.tipo === 'indicacion_vet' ? 'indicación vet.' : r.tipo, r.sustancia, r.gravedad, r.sinonimos.join(', '))))}
+      ${tabla('Medicamentos', ['Nombre', 'Dosis', 'Frecuencia', 'Desde', 'Hasta'], meds.filter(x => x.mascota_id === m.id)
+        .map(x => fila(x.nombre, x.dosis, x.cada_horas && `cada ${x.cada_horas} h`, x.desde && fmtFecha(x.desde), x.hasta && fmtFecha(x.hasta))))}
+      ${tabla('Vacunas, desparasitaciones y consultas', ['Fecha', 'Tipo', 'Detalle', 'Próxima', 'Veterinario'], salud.filter(s => s.mascota_id === m.id)
+        .map(s => fila(fmtFecha(s.fecha), s.tipo, s.detalle, s.proxima_fecha && fmtFecha(s.proxima_fecha), s.veterinario)))}
+      ${tabla('Plan de alimentación', ['Hora', 'Alimento', 'Gramos'], plan.filter(p => p.mascota_id === m.id && p.activo)
+        .map(p => fila(p.hora?.slice(0, 5), p.alimento, p.gramos)))}
+      ${tabla('Peso (últimos 10)', ['Fecha', 'Kg'], pesos.filter(p => p.mascota_id === m.id).slice(-10).reverse().map(p => fila(fmtFecha(p.fecha), p.kg)))}
+      ${tabla('Síntomas y conducta (últimos 45 días)', ['Fecha', 'Tipo', 'Nota'], evs
+        .map(e => fila(new Date(e.fecha_hora).toLocaleString('es'), e.tipo === 'sintoma' ? 'síntoma' : 'conducta', e.nota)))}
+      <p style="margin-top:24px;color:#666">Generado el ${new Date().toLocaleString('es')} con la app Mascota.</p>
+      </body></html>`);
+    w.document.close();
+    w.focus();
+    setTimeout(() => w.print(), 300);
+  };
+
+  // ---------- Exportar historial a CSV (se abre en Excel) ----------
+  $('exportar').onclick = async e => {
+    const btn = e.currentTarget;
+    btn.disabled = true;
+    const filas = [];
+    for (let i = 0; ; i += 1000) {
+      const { data, error } = await sb.from('eventos').select('*').order('fecha_hora').order('id').range(i, i + 999);
+      if (error) { btn.disabled = false; return alert('No se pudo exportar: ' + error.message); }
+      filas.push(...data);
+      if (data.length < 1000) break;
+    }
+    btn.disabled = false;
+    const nombre = id => mascotas.find(x => x.id === id)?.nombre ?? '';
+    // comillas dobles escapadas; un ' delante de = + - @ evita que Excel lo ejecute como fórmula
+    const celda = v => `"${String(v ?? '').replace(/^(?=\s*[=+\-@])/, "'").replace(/"/g, '""')}"`;
+    const csv = [['fecha', 'hora', 'mascota', 'tipo', 'duracion_min', 'cantidad', 'nota'],
+      ...filas.map(ev => {
+        const d = new Date(ev.fecha_hora);
+        return [d.toLocaleDateString('en-CA'), d.toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' }),
+          nombre(ev.mascota_id), ev.tipo, ev.duracion_min, ev.cantidad, ev.nota];
+      })].map(f => f.map(celda).join(';')).join('\r\n'); // ";" porque Excel en español usa coma decimal
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' })); // BOM: Excel lee bien las tildes
+    a.download = `mascota-historial-${hoyISO()}.csv`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  };
+
+  // ---------- Mascotas ----------
+  const dlgM = $('dlg-mascota');
+  $('nueva-mascota').onclick = () => abrir(dlgM, { actividad: 'normal', objetivo: 'mantener' });
+  $('lista-mascotas').onclick = e => {
+    const b = e.target.closest('[data-id]');
+    if (b) abrir(dlgM, mascotas.find(x => x.id === b.dataset.id));
+  };
+  alEnviar(dlgM, async f => {
+    const extra = {};
+    const foto = f.elements.foto.files[0];
+    const anterior = mascotas.find(x => x.id === f.dataset.id)?.foto_url;
+    if (foto) {
+      const ruta = `${usuario.id}/${crypto.randomUUID()}.jpg`; // foto_url guarda la ruta en Storage, no una URL
+      const { error } = await sb.storage.from('fotos').upload(ruta, await achicar(foto), { contentType: 'image/jpeg' });
+      if (error) throw error;
+      extra.foto_url = ruta;
+    }
+    try { await guardar('mascotas', f, extra); }
+    catch (err) { if (extra.foto_url) sb.storage.from('fotos').remove([extra.foto_url]); throw err; }
+    if (foto && anterior) sb.storage.from('fotos').remove([anterior]);
+  });
+  alBorrar(dlgM, 'mascotas', () => mascotas,
+    m => `¿Eliminar a ${m.nombre}? También se borra todo su historial (paseos, comidas, salud…). No se puede deshacer.`,
+    m => { if (m.foto_url) sb.storage.from('fotos').remove([m.foto_url]); });
+
+  // ---------- Contactos ----------
+  const dlgC = $('dlg-contacto');
+  $('nuevo-contacto').onclick = () => abrir(dlgC);
+  $('lista-contactos').onclick = e => {
+    const b = e.target.closest('button[data-id]');
+    if (b) abrir(dlgC, contactos.find(x => x.id === b.dataset.id));
+  };
+  alEnviar(dlgC, f => guardar('contactos', f));
+  alBorrar(dlgC, 'contactos', () => contactos, c => `¿Eliminar el contacto ${c.nombre}?`);
+</script>
+</body>
+</html>
