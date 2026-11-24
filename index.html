@@ -52,7 +52,15 @@
     .evento small { display: block; margin-left: 52px; }
     .evento b { display: inline-block; width: 48px; font-variant-numeric: tabular-nums; }
     main { padding-bottom: 96px; }
-    #elegir-mascota { margin-top: 12px; }
+    #barra-mascota { position: sticky; top: 0; z-index: 5; display: flex; gap: 8px; overflow-x: auto; margin: 8px -16px 0; padding: 10px 16px; background: var(--bg); border-bottom: 1px solid #8884; }
+    .pet { display: flex; align-items: center; gap: 8px; flex: none; width: auto; margin: 0; padding: 4px 16px 4px 4px; border-radius: 99px; background: var(--card); color: var(--fg); border: 2px solid #8884; font-size: 17px; font-weight: 600; }
+    .pet img, .pet .ini { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; display: grid; place-items: center; background: #8882; font-size: 20px; }
+    .pet[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .pet[aria-pressed="false"] { opacity: .65; }
+    .pet .aviso-n { background: var(--danger); color: #fff; border-radius: 99px; font-size: 12px; padding: 0 7px; }
+    .nombre-activa { color: var(--accent); }
+    .tarjeta.activa { border: 2px solid var(--accent); }
+    .otra { display: flex; justify-content: space-between; text-align: left; background: var(--card); color: var(--fg); border: 1px solid #8883; margin: 0 0 8px; }
     #tabs { position: fixed; left: 0; right: 0; bottom: 0; display: flex; background: var(--card); border-top: 1px solid #8884; padding-bottom: env(safe-area-inset-bottom); }
     #tabs button { flex: 1; margin: 0; padding: 8px 0; border-radius: 0; background: none; color: var(--muted); font-size: 12px; display: flex; flex-direction: column; align-items: center; }
     #tabs button span { font-size: 22px; }
@@ -95,19 +103,19 @@
   <section id="app" hidden>
     <div class="fila"><span class="muted" id="quien"></span>
       <span><button id="poner-clave" class="sec">🔑 Contraseña</button> <button id="salir" class="sec">Salir</button></span></div>
-    <div id="elegir-mascota" class="chips" role="group" aria-label="Mascota"></div>
+    <div id="barra-mascota" role="group" aria-label="Mascota activa"></div>
 
     <div data-tab="hoy">
       <button id="emergencia" class="peligro">🚨 Emergencia</button>
       <section id="registrar" hidden>
-        <h2>Registrar</h2>
+        <h2>Registrar para <span class="nombre-activa"></span></h2>
         <div id="botones" class="grilla"></div>
         <button id="crono" class="sec"></button>
       </section>
       <h2>Hoy</h2>
       <div id="panel-hoy"></div>
 
-      <h2>🤖 Asistente</h2>
+      <h2>🤖 Asistente · <span class="nombre-activa"></span></h2>
       <div class="chips">
         <button data-ia="menu">🍖 ¿Qué le doy hoy?</button>
         <button data-ia="resumen">📊 Resumen de la semana</button>
@@ -125,7 +133,7 @@
       <div id="lista-mascotas"></div>
       <button id="nueva-mascota">+ Agregar mascota</button>
 
-      <h2>Reglas y alergias</h2>
+      <h2>Reglas y alergias de <span class="nombre-activa"></span></h2>
       <p class="muted">Lo que la app nunca olvida. Las alergias y lo que hay que evitar bloquean comidas y recomendaciones.</p>
       <ul id="lista-reglas"></ul>
       <button id="nueva-regla" class="sec">+ Agregar regla</button>
@@ -134,7 +142,7 @@
       <p class="muted">Lo que confirmaste que la IA debe recordar. Se lo envía en cada consulta.</p>
       <ul id="lista-recuerdos"></ul>
 
-      <h2>Plan de alimentación</h2>
+      <h2>Plan de alimentación de <span class="nombre-activa"></span></h2>
       <ul id="lista-plan"></ul>
       <button id="nuevo-plan" class="sec">+ Agregar comida al plan</button>
 
@@ -185,7 +193,7 @@
     </div>
 
     <div data-tab="salud" hidden>
-      <h2>Salud</h2>
+      <h2>Salud de <span class="nombre-activa"></span></h2>
       <button id="ficha" class="sec">🖨️ Ficha para el veterinario (imprimir o PDF)</button>
       <h3 class="sub">Próximas fechas</h3>
       <ul id="lista-proximos"></ul>
@@ -473,7 +481,7 @@
   const $ = id => document.getElementById(id);
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   let usuario = null, mascotas = [], contactos = [], reglas = [], plan = [], salud = [], meds = [], pesos = [], tomas = [], recientes = [],
-    ingMascota = [], inventario = [], gastos = [], aprendizajes = [], recomendaciones = [];
+    ingMascota = [], inventario = [], gastos = [], aprendizajes = [], recomendaciones = [], fotos = {};
 
   // ---------- Sesión ----------
   // con contraseña entra directo; sin contraseña manda el enlace al correo (Supabase gratis: pocos correos por hora)
@@ -561,34 +569,38 @@
       ${x.telefono ? `<a href="tel:${esc(x.telefono.replace(/[^\d+]/g, ''))}">📞 ${esc(x.telefono)}</a>` : ''}</li>`).join('')
       || '<li class="muted">Sin contactos.</li>';
 
+    fotos = urls;
     const opciones = mascotas.map(x => `<option value="${x.id}">${esc(x.nombre)}</option>`).join('');
-    const fm = $('f-mascota').value;
+    // el historial sigue a la mascota activa, salvo que el usuario haya elegido otra cosa en el filtro
+    const fm = $('f-mascota').dataset.manual ? $('f-mascota').value : (mascotas.some(x => x.id === elegida) ? elegida : '');
     $('f-mascota').innerHTML = '<option value="">Todas las mascotas</option>' + opciones;
-    $('f-mascota').value = mascotas.some(x => x.id === fm) ? fm : '';
+    $('f-mascota').value = fm === '' || mascotas.some(x => x.id === fm) ? fm : '';
     $('f-mascota').hidden = mascotas.length < 2;
     document.querySelectorAll('select[name=mascota_id]').forEach(s => {
       s.innerHTML = (s.dataset.todas ? `<option value="">${esc(s.dataset.todas)}</option>` : '') + opciones;
     });
 
-    const nombreDe = id => mascotas.length > 1 ? mascotas.find(x => x.id === id)?.nombre : null;
-    $('lista-reglas').innerHTML = reglas.map(r => `
-      <li><button data-id="${r.id}">${ICONO_REGLA[r.tipo]} ${esc(r.sustancia)}</button>
-      <small class="muted">${esc([nombreDe(r.mascota_id), r.gravedad, r.activa ? '' : 'inactiva',
-        r.sinonimos.length ? r.sinonimos.length + ' sinónimos' : ''].filter(Boolean).join(' · '))}</small></li>`).join('')
-      || '<li class="muted">Sin reglas. Agrega aquí alergias y lo que tu mascota no debe comer.</li>';
-
-    $('lista-plan').innerHTML = plan.map(p => {
-      const c = chocan(p.alimento, [...reglasDe(p.mascota_id), ...TOXICOS]);
-      return `<li><button data-id="${p.id}">${p.hora ? p.hora.slice(0, 5) : '—'} · ${esc(p.alimento)}</button>
-        <small class="muted">${esc([p.gramos && p.gramos + ' g', nombreDe(p.mascota_id), p.activo ? '' : 'inactivo'].filter(Boolean).join(' · '))}</small>
-        ${c.length ? `<small class="alerta">⛔ Choca con: ${esc(c.map(r => r.sustancia).join(', '))}</small>` : ''}</li>`;
-    }).join('') || '<li class="muted">Sin plan de alimentación.</li>';
-
-    dibujarSalud(nombreDe);
-    dibujarHoy();
     dibujarGastos();
     dibujarElegir();
     cargarHistorial();
+  }
+
+  // Reglas y plan de la mascota activa
+  function dibujarListasMascota() {
+    $('lista-reglas').innerHTML = reglas.filter(r => r.mascota_id === elegida).map(r => `
+      <li><button data-id="${r.id}">${ICONO_REGLA[r.tipo]} ${esc(r.sustancia)}</button>
+      <small class="muted">${esc([r.gravedad, r.activa ? '' : 'inactiva',
+        r.sinonimos.length ? r.sinonimos.length + ' sinónimos' : ''].filter(Boolean).join(' · '))}</small></li>`).join('')
+      || '<li class="muted">Sin reglas. Agrega aquí alergias y lo que no debe comer.</li>';
+
+    $('lista-plan').innerHTML = plan.filter(p => p.mascota_id === elegida).map(p => {
+      const c = chocan(p.alimento, [...reglasDe(p.mascota_id), ...TOXICOS]);
+      return `<li><button data-id="${p.id}">${p.hora ? p.hora.slice(0, 5) : '—'} · ${esc(p.alimento)}</button>
+        <small class="muted">${esc([p.gramos && p.gramos + ' g', p.activo ? '' : 'inactivo'].filter(Boolean).join(' · '))}</small>
+        ${c.length ? `<small class="alerta">⛔ Choca con: ${esc(c.map(r => r.sustancia).join(', '))}</small>` : ''}</li>`;
+    }).join('') || '<li class="muted">Sin plan de alimentación.</li>';
+
+    document.querySelectorAll('#lista-mascotas .tarjeta').forEach(t => t.classList.toggle('activa', t.dataset.id === elegida));
   }
 
   function edad(fecha) {
@@ -701,25 +713,37 @@
 
   $('botones').innerHTML = TIPOS.map(([t, i, n]) => `<button data-tipo="${t}"><span aria-hidden="true">${i}</span>${n}</button>`).join('');
 
+  // Barra fija con la mascota activa: todo lo que se ve y se registra es de ella
   function dibujarElegir() {
     if (!mascotas.some(x => x.id === elegida)) elegida = mascotas[0]?.id ?? null;
+    const m = mascotas.find(x => x.id === elegida);
     $('registrar').hidden = !elegida;
-    $('elegir-mascota').hidden = mascotas.length < 2; // con una sola mascota no hace falta elegir
-    $('elegir-mascota').innerHTML = mascotas.map(x =>
-      `<button data-id="${x.id}" aria-pressed="${x.id === elegida}">${esc(x.nombre)}</button>`).join('');
+    $('barra-mascota').hidden = !mascotas.length;
+    $('barra-mascota').innerHTML = mascotas.map(x => {
+      const n = avisosDe(x).length;
+      return `<button class="pet" data-id="${x.id}" aria-pressed="${x.id === elegida}">
+        ${fotos[x.foto_url] ? `<img src="${esc(fotos[x.foto_url])}" alt="">` : '<span class="ini">🐾</span>'}${esc(x.nombre)}
+        ${n && x.id !== elegida ? `<span class="aviso-n" title="avisos">${n}</span>` : ''}</button>`;
+    }).join('');
+    document.querySelectorAll('.nombre-activa').forEach(s => { s.textContent = m ? m.nombre : ''; });
+    dibujarListasMascota();
+    dibujarSalud();
+    dibujarHoy();
     dibujarPeso();
     dibujarCrono();
     dibujarComida();
     dibujarIA();
   }
 
-  $('elegir-mascota').onclick = e => {
-    const b = e.target.closest('[data-id]');
-    if (!b) return;
-    elegida = b.dataset.id;
+  function elegirMascota(id) {
+    elegida = id;
     try { localStorage.setItem('mascota', elegida); } catch {}
+    delete $('f-mascota').dataset.manual;
+    $('f-mascota').value = id;
     dibujarElegir();
-  };
+    cargarHistorial();
+  }
+  $('barra-mascota').onclick = e => { const b = e.target.closest('[data-id]'); if (b) elegirMascota(b.dataset.id); };
 
   $('botones').onclick = async e => {
     const b = e.target.closest('[data-tipo]');
@@ -813,7 +837,8 @@
     $('historial').innerHTML = html || '<p class="muted">Sin registros.</p>';
   }
 
-  $('f-mascota').onchange = $('f-tipo').onchange = () => cargarHistorial();
+  $('f-mascota').onchange = () => { $('f-mascota').dataset.manual = '1'; cargarHistorial(); };
+  $('f-tipo').onchange = () => cargarHistorial();
   $('mas').onclick = () => cargarHistorial(true);
 
   const dlgE = $('dlg-evento');
@@ -882,28 +907,29 @@
     return t && med.cada_horas ? new Date(new Date(t.fecha_hora).getTime() + med.cada_horas * 36e5) : null;
   }
 
-  function dibujarSalud(nombreDe) {
-    $('lista-proximos').innerHTML = proximos().map(s => {
+  // Salud de la mascota activa
+  function dibujarSalud() {
+    $('lista-proximos').innerHTML = proximos().filter(s => s.mascota_id === elegida).map(s => {
       const d = diasHasta(s.proxima_fecha);
       const cuando = d < 0 ? `vencido hace ${-d} día${d === -1 ? '' : 's'}` : d === 0 ? 'hoy' : `en ${d} día${d === 1 ? '' : 's'}`;
       return `<li${d <= 7 ? ' class="alerta"' : ''}>${ICONO_SALUD[s.tipo]} ${esc(s.detalle || s.tipo)}
-        <small>${esc([nombreDe(s.mascota_id), fmtFecha(s.proxima_fecha)].filter(Boolean).join(' · '))} — ${cuando}</small></li>`;
+        <small>${esc(fmtFecha(s.proxima_fecha))} — ${cuando}</small></li>`;
     }).join('') || '<li class="muted">Nada pendiente.</li>';
 
     const hoy = hoyISO();
-    $('lista-meds').innerHTML = meds.map(x => {
+    $('lista-meds').innerHTML = meds.filter(x => x.mascota_id === elegida).map(x => {
       const activo = !x.hasta || x.hasta >= hoy;
       const prox = activo && proximaDosis(x);
       return `<li${activo ? '' : ' class="muted"'}><button data-id="${x.id}">💊 ${esc(x.nombre)}</button>
-        <small class="muted">${esc([x.dosis, x.cada_horas && `cada ${x.cada_horas} h`, nombreDe(x.mascota_id),
+        <small class="muted">${esc([x.dosis, x.cada_horas && `cada ${x.cada_horas} h`,
           x.hasta && (activo ? 'hasta ' : 'terminó ') + fmtFecha(x.hasta)].filter(Boolean).join(' · '))}</small>
         ${activo ? `<button class="dar" data-dar="${x.id}">Dar ahora</button>` : ''}
         ${prox ? `<small class="${prox < new Date() ? 'alerta' : 'muted'}" style="width:100%">Próxima dosis: ${fmtHora(prox)}${prox < new Date() ? ' (atrasada)' : ''}</small>` : ''}</li>`;
     }).join('') || '<li class="muted">Sin medicamentos.</li>';
 
-    $('lista-salud').innerHTML = salud.map(s => `
+    $('lista-salud').innerHTML = salud.filter(s => s.mascota_id === elegida).map(s => `
       <li><button data-id="${s.id}">${ICONO_SALUD[s.tipo]} ${esc(s.detalle || s.tipo)}</button>
-      <small class="muted">${esc([fmtFecha(s.fecha), nombreDe(s.mascota_id), s.veterinario].filter(Boolean).join(' · '))}</small></li>`).join('')
+      <small class="muted">${esc([fmtFecha(s.fecha), s.veterinario].filter(Boolean).join(' · '))}</small></li>`).join('')
       || '<li class="muted">Sin registros de salud.</li>';
 
     $('vets').innerHTML = contactos.filter(c => c.tipo === 'veterinario').map(c => `<option value="${esc(c.nombre)}">`).join('');
@@ -913,7 +939,7 @@
   function dibujarPeso() {
     const m = mascotas.find(x => x.id === elegida);
     const ps = pesos.filter(p => p.mascota_id === elegida);
-    $('titulo-peso').textContent = m && mascotas.length > 1 ? `Peso de ${m.nombre}` : 'Peso';
+    $('titulo-peso').textContent = m ? `Peso de ${m.nombre}` : 'Peso';
     const rango = m && rangoRaza(m.raza), ultimoKg = ps.length ? +ps[ps.length - 1].kg : null;
     const fuera = rango && ultimoKg != null && (ultimoKg < rango.min || ultimoKg > rango.max);
     $('grafico-peso').innerHTML = grafico(ps) + (rango
@@ -997,9 +1023,27 @@
   verTab(['hoy', 'mascotas', 'comida', 'salud', 'historial'].includes(tabGuardada) ? tabGuardada : 'hoy');
 
   // ---------- Panel "Hoy": lo que la app aprendió y lo que falta (lógica en aprende.js) ----------
+  // Tarjeta completa de la mascota activa; las demás, en una línea que se toca para cambiar
   function dibujarHoy() {
-    const ahora = new Date();
-    $('panel-hoy').innerHTML = mascotas.map(m => {
+    const m = mascotas.find(x => x.id === elegida);
+    if (!m) return ($('panel-hoy').innerHTML = '<p class="muted">Agrega tu primera mascota en la pestaña 🐾 Mascotas.</p>');
+    const { avisos, info } = resumenHoy(m);
+    const alergias = alergiasDe(m.id).map(r => r.sustancia);
+    $('panel-hoy').innerHTML = `<div class="hoy">
+        ${alergias.length ? `<p class="alerta">⛔ Alergia: ${esc(alergias.join(', '))}</p>` : ''}
+        ${avisos.map(a => `<p class="alerta">${esc(a)}</p>`).join('') || '<p class="ok">✓ Todo en orden por ahora</p>'}
+        ${info.map(i => `<p class="muted">${esc(i)}</p>`).join('')}</div>` +
+      mascotas.filter(x => x.id !== m.id).map(x => {
+        const n = avisosDe(x).length;
+        return `<button class="otra" data-id="${x.id}"><span>🐾 ${esc(x.nombre)}: ${n ? `<span class="alerta">⚠️ ${n} aviso${n === 1 ? '' : 's'}</span>` : '<span class="ok">✓ todo en orden</span>'}</span><span>ver ›</span></button>`;
+      }).join('');
+  }
+  $('panel-hoy').onclick = e => { const b = e.target.closest('.otra'); if (b) elegirMascota(b.dataset.id); };
+  const avisosDe = m => resumenHoy(m).avisos;
+
+  // Avisos e información del día para una mascota
+  function resumenHoy(m, ahora = new Date()) {
+    {
       const evs = recientes.filter(e => e.mascota_id === m.id); // ordenados del más nuevo al más viejo
       const avisos = [], info = [];
       const ultimo = t => evs.find(e => e.tipo === t);
@@ -1047,12 +1091,8 @@
         : '📈 Aprendiendo sus horarios: con 5 días de registros empiezo a avisarte.');
 
       avisosRaza(m, evs, ahora, avisos, info);
-      const alergias = alergiasDe(m.id).map(r => r.sustancia);
-      return `<div class="hoy"><h3>${esc(m.nombre)}</h3>
-        ${alergias.length ? `<p class="alerta">⛔ Alergia: ${esc(alergias.join(', '))}</p>` : ''}
-        ${avisos.map(a => `<p class="alerta">${esc(a)}</p>`).join('') || '<p class="ok">✓ Todo en orden por ahora</p>'}
-        ${info.map(i => `<p class="muted">${esc(i)}</p>`).join('')}</div>`;
-    }).join('') || '<p class="muted">Agrega tu primera mascota en la pestaña 🐾 Mascotas.</p>';
+      return { avisos, info };
+    }
   }
   setInterval(() => { if (usuario) { dibujarHoy(); dibujarCrono(); } }, 30000); // refresca "hace X", avisos y cronómetro
 
@@ -1197,7 +1237,7 @@
 
   function dibujarComida() {
     const m = mascotas.find(x => x.id === elegida);
-    $('titulo-comida').textContent = m && mascotas.length > 1 ? `Comida de ${m.nombre}` : 'Comida';
+    $('titulo-comida').textContent = m ? `Comida de ${m.nombre}` : 'Comida';
     $('lista-toxicos').textContent = TOXICOS.map(t => t.sustancia).join(', ') + '.';
     dibujarInventario();
     if (!m) { $('calorias').innerHTML = '<p class="muted">Agrega una mascota primero.</p>'; $('lista-ingredientes').innerHTML = ''; return; }
