@@ -51,13 +51,16 @@ Deno.serve(async (req) => {
     // Proveedor con API compatible con OpenAI: Groq por defecto; IA_URL + IA_MODEL + IA_API_KEY para otro (ver GUIA.md)
     const clave = Deno.env.get('IA_API_KEY') ?? Deno.env.get('GROQ_API_KEY');
     if (!clave) return json({ error: 'Falta configurar la clave de la IA (IA_API_KEY o GROQ_API_KEY) en los secretos de Supabase.' }, 500);
+    // gpt-oss: modelo abierto disponible en el plan gratis de Groq (los Llama 3.3 pasaron a plan empresa en 2026)
+    const modelo = Deno.env.get('IA_MODEL') ?? Deno.env.get('GROQ_MODEL') ?? 'openai/gpt-oss-120b';
     const r = await fetch(Deno.env.get('IA_URL') ?? 'https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: { Authorization: `Bearer ${clave}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: Deno.env.get('IA_MODEL') ?? Deno.env.get('GROQ_MODEL') ?? 'llama-3.3-70b-versatile',
+        model: modelo,
         temperature: 0.3,
-        max_tokens: 800,
+        max_tokens: 2500, // los modelos que "razonan" gastan parte de esto antes de responder
+        ...(modelo.includes('gpt-oss') ? { reasoning_effort: 'low' } : {}),
         response_format: { type: 'json_object' },
         messages: [{ role: 'system', content: SISTEMA }, { role: 'user', content: JSON.stringify({ modo, pregunta, contexto }) }],
       }),

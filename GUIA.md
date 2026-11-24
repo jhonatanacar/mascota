@@ -53,7 +53,7 @@ No debe poder entrar.
 
 | Opción | Dónde sacar la clave | Secretos a crear en Supabase |
 |---|---|---|
-| **A. Groq** (recomendada, modelos abiertos Llama) | console.groq.com → **API Keys** → **Create API Key** (empieza con `gsk_`) | `GROQ_API_KEY` = la clave |
+| **A. Groq** (recomendada, modelo abierto GPT-OSS; por defecto `openai/gpt-oss-120b`) | console.groq.com → **API Keys** → **Create API Key** (empieza con `gsk_`) | `GROQ_API_KEY` = la clave |
 | **B. Google Gemini** (si Groq pide tarjeta) | aistudio.google.com → **Get API key** → **Create API key** | `IA_API_KEY` = la clave · `IA_URL` = `https://generativelanguage.googleapis.com/v1beta/openai/chat/completions` · `IA_MODEL` = `gemini-2.0-flash` |
 | **C. OpenRouter** (modelos abiertos gratis, con pocas consultas por día) | openrouter.ai → **Keys** → **Create Key** | `IA_API_KEY` = la clave · `IA_URL` = `https://openrouter.ai/api/v1/chat/completions` · `IA_MODEL` = `meta-llama/llama-3.3-70b-instruct:free` |
 
