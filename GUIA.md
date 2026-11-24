@@ -79,7 +79,6 @@ Abre la app → 🏠 Hoy → **🤖 Asistente** → toca **¿Qué le doy hoy?**.
 | "Failed to send a request to the Edge Function" | La función `ia` no existe o tiene otro nombre: repite el paso 3. |
 | "Invalid JWT" o error 401 | En la función `ia` → **Settings**, desactiva **Enforce JWT verification** (la función igual comprueba la sesión). |
 | "La IA no respondió (400)" con *model* o *decommissioned* | El modelo cambió de nombre: en console.groq.com → *Models* elige uno de texto y agrégalo como secreto `GROQ_MODEL`. |
-| "Failed to send a request" | La función no se llama exactamente `ia` o no se desplegó. |
 | "límite de 60 consultas" | Se usó mucho hoy. Vuelve mañana. |
 
 ### Cómo funciona (y por qué es segura)
