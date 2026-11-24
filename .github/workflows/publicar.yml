@@ -1,4 +1,4 @@
-# Publica en GitHub Pages con cada push a main, SOLO si pasa el test del filtro de alergias.
+# Publica en GitHub Pages con cada push a main, SOLO si pasan los tests.
 name: Publicar
 
 on:
@@ -17,11 +17,9 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  publicar:
+  # 1) tests + empaquetar el sitio
+  preparar:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deploy.outputs.page_url }}
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -33,5 +31,14 @@ jobs:
       - uses: actions/upload-pages-artifact@v4
         with:
           path: .
+
+  # 2) publicar (en un trabajo aparte: así el artefacto ya está disponible)
+  publicar:
+    needs: preparar
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
       - id: deploy
         uses: actions/deploy-pages@v4
