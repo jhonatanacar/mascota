@@ -93,6 +93,47 @@ Abre la app → 🏠 Hoy → **🤖 Asistente** → toca **¿Qué le doy hoy?**.
 
 ---
 
+## Parte 1 c: Recordatorios en el iPhone (gratis, una sola vez)
+
+Llegan aunque la app esté cerrada: dosis que tocan, comidas del plan sin registrar, vacunas/peluquería
+de hoy o mañana, y comida por acabarse (bolsas con "gramos por día").
+
+**Requisitos en iPhone:** iOS 16.4 o superior y la app **instalada** (Safari → Compartir ⬆️ → Agregar a inicio).
+Siempre ábrela desde el ícono.
+
+### 1. Secretos de la función
+Claude te pasa 3 valores (están en un archivo temporal de tu PC, **no** en GitHub):
+`VAPID_PUBLICA`, `VAPID_PRIVADA` y `CRON_SECRET`.
+
+Supabase → **Edge Functions** → **Secrets** → agrega los 3 con esos nombres exactos.
+(Opcional: `ZONA_HORARIA` si no están en Colombia, por ejemplo `America/Mexico_City`.)
+
+### 2. Función "recordatorios"
+1. Edge Functions → **Deploy a new function** → **Via Editor** → nombre: `recordatorios`.
+2. Pega todo `supabase/functions/recordatorios/index.ts` → **Deploy**.
+3. En la función → **Settings** (o *Details*) → **desactiva "Enforce JWT verification"** → guarda.
+   Es necesario porque la tarea automática no tiene sesión; la función igual se protege con `CRON_SECRET`.
+
+### 3. Tarea automática cada 15 minutos
+1. Abre `07_recordatorios.sql`, cópialo en Supabase → **SQL Editor**.
+2. **En el editor** (no en el archivo), reemplaza `PEGA_AQUI_EL_CRON_SECRET` por el valor de `CRON_SECRET`.
+3. **Run**.
+
+### 4. Activar en cada iPhone
+1. Abre la app desde el ícono → 🏠 Hoy → **🔔 Activar recordatorios** → **Permitir**.
+2. Toca **Enviar prueba**: debe llegar "🔔 Recordatorios activos".
+3. Repite en el iPhone de tu hermano (cada dispositivo se activa por separado).
+
+| Si pasa... | Qué hacer |
+|---|---|
+| No aparece el botón de activar | Abre la app desde el ícono de inicio, no desde Safari. Revisa que el iPhone tenga iOS 16.4+. |
+| "Faltan secretos" | Revisa los 3 secretos del paso 1 (nombres exactos). |
+| "Failed to send a request" al probar | La función no se llama `recordatorios` o no se desplegó. |
+| La prueba llega pero los avisos automáticos no | Revisa el paso 3 (el `CRON_SECRET` del SQL debe ser igual al secreto) y que "Enforce JWT verification" esté desactivado. |
+| "Avisos bloqueados" | iPhone → Ajustes → Notificaciones → Mascota → Permitir notificaciones. |
+
+---
+
 ## Parte 2: Publicar en internet (GitHub Pages, gratis)
 
 1. Entra a **github.com** → **+ → New repository**.
@@ -180,14 +221,15 @@ Queda con el ícono de la huella verde y se abre como una app.
 - **Medicamentos:** con **Dar ahora** se registra la toma y se calcula la próxima dosis.
 - **Vacunas, desparasitaciones y consultas:** pon la **próxima fecha** para que la app te avise.
 - **Peso:** gráfico y diferencia entre pesajes. Pesarla una vez al mes alcanza para detectar cambios.
-- **🖨️ Ficha para el veterinario:** abre una hoja con todo resumido para imprimir o guardar como PDF.
-  Si no abre, permite las ventanas emergentes.
+- **🖨️ Ficha para el veterinario:** se abre dentro de la app con todo resumido. **Compartir** la manda por
+  WhatsApp, Mail o Notas; **Imprimir / PDF** abre la impresión del iPhone, donde puedes guardarla como PDF en Archivos.
+
 
 ### 📅 Historial
 - Todo lo registrado, por día, con quién lo hizo. Filtra por mascota o tipo.
 - Toca un registro para corregirlo: hora, duración del paseo, cantidad, nota. También puedes borrarlo.
 - **+ Registro con otra fecha u hora:** para lo que te olvidaste de registrar en el momento.
-- **⬇️ Exportar:** baja todo a un archivo que abre Excel.
+- **⬇️ Exportar:** en iPhone abre la hoja de compartir (Guardar en Archivos, Mail, AirDrop); en PC lo descarga. Se abre con Excel o Numbers.
 - **Gastos:** veterinario, comida, peluquería, medicinas, accesorios. Muestra el total del mes y del mes anterior.
 
 ---
@@ -209,3 +251,8 @@ Queda con el ícono de la huella verde y se abre como una app.
 - No pegues la clave **secret / service_role** de Supabase en ningún archivo.
 - No borres una alergia "para probar": desmárcala como inactiva.
 - La app **no reemplaza al veterinario**: sus avisos son recordatorios, no diagnósticos.
+
+## Sin internet
+
+La app abre igual y muestra lo último que cargó en ese iPhone (aviso 📴 arriba). En ese modo no se pueden
+guardar cambios: cuando vuelve la conexión, se actualiza sola. Al tocar **Salir** se borra esa copia del dispositivo.

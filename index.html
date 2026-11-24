@@ -2,13 +2,16 @@
 <html lang="es">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Mascota</title>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icono-192.png">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
   <meta name="theme-color" content="#2e7d5b">
   <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Mascota">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <style>
     :root { --bg: #fafaf7; --card: #fff; --fg: #222; --accent: #2e7d5b; --muted: #777; --danger: #c0392b; }
     @media (prefers-color-scheme: dark) { :root { --bg: #181a18; --card: #232623; --fg: #eee; --accent: #5cc493; --muted: #999; --danger: #e57373; } }
@@ -85,6 +88,21 @@
     a.tel { display: block; padding: 12px; margin: 8px 0; border-radius: 8px; background: var(--danger); color: #fff; text-decoration: none; font-weight: 600; }
     a.tel small { display: block; font-weight: normal; }
     #lista-ingredientes h4 { margin: 16px 0 4px; }
+    body { padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right); -webkit-tap-highlight-color: transparent; }
+    .caja { background: var(--card); border: 1px solid #8883; border-radius: 12px; padding: 12px 16px; margin: 12px 0; }
+    .caja p { margin: 4px 0; }
+    .caja .fila { flex-wrap: wrap; justify-content: flex-start; }
+    #ficha-contenido { color: var(--fg); }
+    #ficha-contenido table { border-collapse: collapse; width: 100%; font-size: 14px; }
+    #ficha-contenido td, #ficha-contenido th { border: 1px solid #8885; padding: 4px 6px; text-align: left; vertical-align: top; }
+    #ficha-contenido h2 { font-size: 16px; margin: 16px 0 4px; }
+    #imprimible { display: none; }
+    @media print {
+      body.imprimiendo > :not(#imprimible) { display: none !important; }
+      body.imprimiendo #imprimible { display: block; color: #000; font: 13px/1.4 system-ui, sans-serif; }
+      #imprimible table { border-collapse: collapse; width: 100%; }
+      #imprimible td, #imprimible th { border: 1px solid #999; padding: 3px 5px; text-align: left; }
+    }
     [hidden] { display: none !important; }
   </style>
 </head>
@@ -106,6 +124,13 @@
     <div id="barra-mascota" role="group" aria-label="Mascota activa"></div>
 
     <div data-tab="hoy">
+      <p id="sin-conexion" class="aviso" hidden></p>
+      <div id="caja-instalar" class="caja" hidden>
+        <p><b>📲 Instala la app en tu iPhone</b></p>
+        <p class="muted">En Safari, toca <b>Compartir</b> (el cuadrado con la flecha ⬆️) y luego <b>Agregar a inicio</b>. Ábrela siempre desde ese ícono: así funcionan los recordatorios y se ve a pantalla completa.</p>
+        <button type="button" class="sec" id="cerrar-instalar">Entendido</button>
+      </div>
+      <div id="caja-avisos" class="caja" hidden></div>
       <button id="emergencia" class="peligro">🚨 Emergencia</button>
       <section id="registrar" hidden>
         <h2>Registrar para <span class="nombre-activa"></span></h2>
@@ -384,6 +409,17 @@
   </form>
 </dialog>
 
+<div id="imprimible"></div>
+
+<dialog id="dlg-ficha">
+  <div id="ficha-contenido"></div>
+  <div class="fila" style="margin-top:12px">
+    <button type="button" id="ficha-compartir">Compartir</button>
+    <button type="button" class="sec" id="ficha-imprimir">Imprimir / PDF</button>
+  </div>
+  <button type="button" class="sec" onclick="this.closest('dialog').close()">Cerrar</button>
+</dialog>
+
 <dialog id="dlg-clave">
   <form method="dialog">
     <h3>🔑 Contraseña</h3>
@@ -503,16 +539,22 @@
     alert('Listo. La próxima vez entra con tu email y esta contraseña.');
   });
   $('poner-clave').onclick = () => { $('dlg-clave').querySelector('form').reset(); $('dlg-clave').showModal(); };
-  $('salir').onclick = () => sb.auth.signOut();
+  $('salir').onclick = () => { try { localStorage.removeItem('datos'); } catch {} sb.auth.signOut(); }; // borra la copia sin conexión
+
+  function leerGuardado() {
+    try { const g = JSON.parse(localStorage.getItem('datos')); return g?.datos?.length === 14 ? g : null; } catch { return null; }
+  }
 
   sb.auth.onAuthStateChange((_evt, session) => {
     usuario = session?.user ?? null;
+    // sin internet y sin sesión vigente: entra en modo lectura con lo guardado
+    if (!usuario && !navigator.onLine && leerGuardado()) usuario = { email: leerGuardado().email, sinConexion: true };
     $('login').hidden = !!usuario;
     $('app').hidden = $('tabs').hidden = !usuario;
     $('msg').textContent = '';
     if (usuario) {
       $('quien').textContent = usuario.email;
-      setTimeout(cargar); // Supabase pide no llamar a la base dentro de este callback
+      setTimeout(() => { cargar(); dibujarAvisosPush(); }); // Supabase pide no llamar a la base dentro de este callback
     } else {
       mascotas = contactos = [];
       reglas = plan = salud = meds = pesos = tomas = recientes = ingMascota = inventario = gastos = aprendizajes = recomendaciones = [];
@@ -545,13 +587,26 @@
       sb.from('recomendaciones').select('*').order('fecha', { ascending: false }).limit(50)
     ]);
     const fallo = res.find(r => r.error);
-    if (fallo) return ($('msg').textContent = 'Error al cargar: ' + fallo.error.message);
-    [mascotas, contactos, reglas, plan, salud, meds, pesos, tomas, recientes, ingMascota, inventario, gastos, aprendizajes, recomendaciones] = res.map(r => r.data);
+    let datos = res.map(r => r.data);
+    if (fallo) {
+      // sin internet: muestra lo último guardado en este dispositivo (solo lectura)
+      const guardado = leerGuardado();
+      if (!guardado || navigator.onLine && !/fetch|network|red/i.test(fallo.error.message))
+        return ($('msg').textContent = 'Error al cargar: ' + fallo.error.message);
+      datos = guardado.datos;
+      $('sin-conexion').textContent = `📴 Sin conexión: muestro lo guardado el ${new Date(guardado.t).toLocaleString('es', { weekday: 'short', hour: '2-digit', minute: '2-digit' })}. No se pueden guardar cambios hasta que vuelva internet.`;
+      $('sin-conexion').hidden = false;
+    } else {
+      $('sin-conexion').hidden = true;
+      try { localStorage.setItem('datos', JSON.stringify({ t: Date.now(), email: usuario?.email, datos })); } catch {} // si no entra, solo se pierde el modo sin conexión
+    }
+    [mascotas, contactos, reglas, plan, salud, meds, pesos, tomas, recientes, ingMascota, inventario, gastos, aprendizajes, recomendaciones] = datos;
 
     const urls = {};
     const rutas = mascotas.map(x => x.foto_url).filter(Boolean);
     if (rutas.length) {
-      const { data } = await sb.storage.from('fotos').createSignedUrls(rutas, 3600);
+      // 7 días: la app recarga al volver a abrirla, así que los enlaces se renuevan antes de vencer
+      const { data } = await sb.storage.from('fotos').createSignedUrls(rutas, 7 * 24 * 3600);
       data?.forEach(d => { if (d.signedUrl) urls[d.path] = d.signedUrl; });
     }
 
@@ -1582,20 +1637,16 @@
     $('dlg-emergencia').showModal();
   };
 
-  // ---------- Ficha para el veterinario (se imprime o se guarda como PDF desde el navegador) ----------
+  // ---------- Ficha para el veterinario: se abre dentro de la app (en iPhone las ventanas nuevas fallan) ----------
   $('ficha').onclick = () => {
     const m = mascotas.find(x => x.id === elegida);
     if (!m) return;
-    const w = window.open('', '_blank');
-    if (!w) return alert('Permite las ventanas emergentes para ver la ficha.');
     const fila = (...c) => `<tr>${c.map(x => `<td>${esc(x ?? '')}</td>`).join('')}</tr>`;
     const tabla = (titulo, cab, filas) => `<h2>${titulo}</h2>` + (filas.length
       ? `<table><tr>${cab.map(c => `<th>${c}</th>`).join('')}</tr>${filas.join('')}</table>` : '<p>—</p>');
     const evs = recientes.filter(e => e.mascota_id === m.id && (e.tipo === 'sintoma' || e.tipo === 'conducta'));
-    w.document.write(`<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Ficha de ${esc(m.nombre)}</title>
-      <style>body{font:14px/1.4 system-ui,sans-serif;margin:24px;color:#000}h1{margin:0}h2{font-size:16px;margin:20px 0 6px;border-bottom:1px solid #999}
-      table{border-collapse:collapse;width:100%}td,th{border:1px solid #ccc;padding:4px 6px;text-align:left;vertical-align:top}.alergia{color:#b00;font-weight:bold}</style></head><body>
-      <h1>🐾 ${esc(m.nombre)}</h1>
+    $('ficha-contenido').innerHTML = `
+      <h1 style="margin:0">🐾 ${esc(m.nombre)}</h1>
       <p>${esc([m.especie, m.raza, m.sexo, m.esterilizado ? 'esterilizado/a' : null, m.fecha_nacimiento && `nació ${fmtFecha(m.fecha_nacimiento)} (${edad(m.fecha_nacimiento)})`].filter(Boolean).join(' · '))}</p>
       ${m.notas ? `<p>${esc(m.notas)}</p>` : ''}
       ${tabla('Alergias y reglas', ['Tipo', 'Sustancia', 'Gravedad', 'Sinónimos'], reglasDe(m.id).filter(r => r.activa)
@@ -1609,11 +1660,22 @@
       ${tabla('Peso (últimos 10)', ['Fecha', 'Kg'], pesos.filter(p => p.mascota_id === m.id).slice(-10).reverse().map(p => fila(fmtFecha(p.fecha), p.kg)))}
       ${tabla('Síntomas y conducta (últimos 45 días)', ['Fecha', 'Tipo', 'Nota'], evs
         .map(e => fila(new Date(e.fecha_hora).toLocaleString('es'), e.tipo === 'sintoma' ? 'síntoma' : 'conducta', e.nota)))}
-      <p style="margin-top:24px;color:#666">Generado el ${new Date().toLocaleString('es')} con la app Mascota.</p>
-      </body></html>`);
-    w.document.close();
-    w.focus();
-    setTimeout(() => w.print(), 300);
+      <p class="muted" style="margin-top:16px">Generado el ${new Date().toLocaleString('es')} con la app Mascota.</p>`;
+    $('dlg-ficha').dataset.nombre = m.nombre;
+    $('dlg-ficha').showModal();
+  };
+  // Compartir: hoja de compartir de iOS (WhatsApp, Mail, Notas…); si no existe, copia el texto
+  $('ficha-compartir').onclick = async () => {
+    const texto = $('ficha-contenido').innerText, titulo = `Ficha de ${$('dlg-ficha').dataset.nombre}`;
+    if (navigator.share) { try { await navigator.share({ title: titulo, text: texto }); } catch {} return; }
+    try { await navigator.clipboard.writeText(texto); alert('Ficha copiada: pégala donde quieras.'); } catch { alert('Tu navegador no permite compartir.'); }
+  };
+  // Imprimir / PDF: en iPhone, en la vista de impresión se puede "Guardar en Archivos" como PDF
+  $('ficha-imprimir').onclick = () => {
+    $('imprimible').innerHTML = $('ficha-contenido').innerHTML;
+    $('dlg-ficha').close();
+    document.body.classList.add('imprimiendo');
+    setTimeout(() => { window.print(); document.body.classList.remove('imprimiendo'); }, 100);
   };
 
   // ---------- Exportar historial a CSV (se abre en Excel) ----------
@@ -1637,11 +1699,76 @@
         return [d.toLocaleDateString('en-CA'), d.toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' }),
           nombre(ev.mascota_id), ev.tipo, ev.duracion_min, ev.cantidad, ev.nota];
       })].map(f => f.map(celda).join(';')).join('\r\n'); // ";" porque Excel en español usa coma decimal
+    const archivo = new File(['﻿' + csv], `mascota-historial-${hoyISO()}.csv`, { type: 'text/csv;charset=utf-8' }); // BOM: Excel lee bien las tildes
+    // en iPhone: hoja de compartir (Guardar en Archivos, Mail, AirDrop…); en PC: descarga normal
+    if (navigator.canShare?.({ files: [archivo] })) { try { await navigator.share({ files: [archivo], title: 'Historial de Mascota' }); } catch {} return; }
     const a = document.createElement('a');
-    a.href = URL.createObjectURL(new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' })); // BOM: Excel lee bien las tildes
-    a.download = `mascota-historial-${hoyISO()}.csv`;
+    a.href = URL.createObjectURL(archivo);
+    a.download = archivo.name;
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  };
+
+  // ---------- iPhone: instalación, sin conexión y recordatorios (Web Push) ----------
+  const esIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const instalada = matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+  const swListo = 'serviceWorker' in navigator
+    ? navigator.serviceWorker.register('sw.js').then(() => navigator.serviceWorker.ready).catch(() => null) : Promise.resolve(null);
+
+  let instalarVisto = false;
+  try { instalarVisto = localStorage.getItem('instalar-visto') === '1'; } catch {}
+  $('caja-instalar').hidden = !esIOS || instalada || instalarVisto;
+  $('cerrar-instalar').onclick = () => { $('caja-instalar').hidden = true; try { localStorage.setItem('instalar-visto', '1'); } catch {} };
+
+  window.addEventListener('online', () => { if (usuario?.sinConexion) location.reload(); else if (usuario) cargar(); });
+
+  const b64aBytes = s => Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - s.length % 4) % 4)), c => c.charCodeAt(0));
+  const suscripcionActual = async () => { const reg = await swListo; return reg?.pushManager ? reg.pushManager.getSubscription() : null; };
+
+  async function dibujarAvisosPush() {
+    const caja = $('caja-avisos');
+    if (esIOS && !instalada) {
+      caja.hidden = false;
+      caja.innerHTML = '<p><b>🔔 Recordatorios</b></p><p class="muted">En iPhone funcionan con la app instalada (Compartir ⬆️ → Agregar a inicio) y con iOS 16.4 o superior. Ábrela desde el ícono y actívalos aquí.</p>';
+      return;
+    }
+    if (!('PushManager' in window && 'Notification' in window) || !(await swListo)) { caja.hidden = true; return; }
+    const sub = await suscripcionActual();
+    caja.hidden = false;
+    caja.innerHTML = sub && Notification.permission === 'granted'
+      ? `<p><b>🔔 Recordatorios activos</b> en este dispositivo</p>
+         <p class="muted">Dosis, comidas del plan sin registrar, vacunas y peluquería, y comida por acabarse.</p>
+         <div class="fila"><button type="button" class="sec" id="push-probar">Enviar prueba</button><button type="button" class="sec" id="push-quitar">Desactivar</button></div>`
+      : Notification.permission === 'denied'
+        ? '<p><b>🔕 Avisos bloqueados</b></p><p class="muted">Actívalos en Ajustes → Notificaciones → Mascota.</p>'
+        : `<p><b>🔔 Recordatorios en el celular</b></p>
+           <p class="muted">Te aviso de dosis, comidas sin registrar, vacunas y peluquería, aunque la app esté cerrada.</p>
+           <button type="button" id="push-activar">Activar recordatorios</button>`;
+  }
+
+  $('caja-avisos').onclick = async e => {
+    const id = e.target.id;
+    if (!['push-activar', 'push-probar', 'push-quitar'].includes(id)) return;
+    e.target.disabled = true;
+    try {
+      if (id === 'push-activar') {
+        // iOS exige pedir el permiso directo desde el toque, antes de cualquier otra espera
+        if (await Notification.requestPermission() !== 'granted') throw new Error('No diste permiso para los avisos.');
+        const reg = await swListo;
+        const j = (await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64aBytes(VAPID_PUBLICA) })).toJSON();
+        const { error } = await sb.from('push_suscripciones').upsert({ endpoint: j.endpoint, p256dh: j.keys.p256dh, auth: j.keys.auth });
+        if (error) throw error;
+      } else if (id === 'push-probar') {
+        const sub = await suscripcionActual();
+        const { data, error } = await sb.functions.invoke('recordatorios', { body: { endpoint: sub?.endpoint } });
+        if (error) { let m = error.message; try { m = (await error.context.json()).error || m; } catch {} throw new Error(m); }
+        if (data?.error) throw new Error(data.error);
+      } else {
+        const sub = await suscripcionActual();
+        if (sub) { await sb.from('push_suscripciones').delete().eq('endpoint', sub.endpoint); await sub.unsubscribe(); }
+      }
+    } catch (err) { alert('No se pudo: ' + (err.message || err)); }
+    dibujarAvisosPush();
   };
 
   // ---------- Mascotas ----------
