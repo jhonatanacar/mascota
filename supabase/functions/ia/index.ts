@@ -48,13 +48,14 @@ Deno.serve(async (req) => {
     if ((count ?? 0) >= LIMITE_DIA) return json({ error: `Se alcanzó el límite de ${LIMITE_DIA} consultas de hoy. Vuelve mañana.` }, 429);
     await sb.from('ia_llamadas').insert({ usuario: user.email, modo });
 
-    const clave = Deno.env.get('GROQ_API_KEY');
-    if (!clave) return json({ error: 'Falta configurar GROQ_API_KEY en los secretos de Supabase.' }, 500);
-    const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    // Proveedor con API compatible con OpenAI: Groq por defecto; IA_URL + IA_MODEL + IA_API_KEY para otro (ver GUIA.md)
+    const clave = Deno.env.get('IA_API_KEY') ?? Deno.env.get('GROQ_API_KEY');
+    if (!clave) return json({ error: 'Falta configurar la clave de la IA (IA_API_KEY o GROQ_API_KEY) en los secretos de Supabase.' }, 500);
+    const r = await fetch(Deno.env.get('IA_URL') ?? 'https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: { Authorization: `Bearer ${clave}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: Deno.env.get('GROQ_MODEL') ?? 'llama-3.3-70b-versatile',
+        model: Deno.env.get('IA_MODEL') ?? Deno.env.get('GROQ_MODEL') ?? 'llama-3.3-70b-versatile',
         temperature: 0.3,
         max_tokens: 800,
         response_format: { type: 'json_object' },
@@ -63,7 +64,10 @@ Deno.serve(async (req) => {
     });
     if (!r.ok) return json({ error: `La IA no respondió (${r.status}): ${(await r.text()).slice(0, 200)}` }, 502);
     const salida = (await r.json()).choices?.[0]?.message?.content ?? '';
-    try { return json(JSON.parse(salida)); } catch { return json({ error: 'La IA respondió en un formato inválido. Intenta de nuevo.' }, 502); }
+    // algunos modelos envuelven el JSON en texto o en ```json: se toma el primer objeto { ... }
+    try { return json(JSON.parse(salida)); } catch {}
+    try { return json(JSON.parse(salida.match(/\{[\s\S]*\}/)?.[0] ?? '')); } catch {}
+    return json({ error: 'La IA respondió en un formato inválido. Intenta de nuevo.' }, 502);
   } catch (e) {
     return json({ error: 'Error en la función: ' + (e?.message ?? String(e)) }, 500);
   }

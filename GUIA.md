@@ -46,10 +46,18 @@ No debe poder entrar.
 
 ## Parte 1 b: Activar la IA (gratis, una sola vez)
 
-### 1. Clave de Groq
-1. Entra a **console.groq.com** y crea una cuenta (con Google o email). Es gratis.
-2. Menú **API Keys** → **Create API Key** → ponle de nombre `mascota` → copia la clave (empieza con `gsk_`).
-   - Guárdala solo para el paso 3. **Nunca** la pegues en ningún archivo del proyecto ni en GitHub.
+### 1. Clave de una IA gratuita (elige UNA)
+
+> Ojo: **Groq** (con q, console.groq.com) es gratis. **Grok** (con k, de x.ai) es otra cosa y es de pago.
+> Ninguna clave se pega en archivos del proyecto ni en GitHub: solo en los secretos de Supabase (paso 3).
+
+| Opción | Dónde sacar la clave | Secretos a crear en Supabase |
+|---|---|---|
+| **A. Groq** (recomendada, modelos abiertos Llama) | console.groq.com → **API Keys** → **Create API Key** (empieza con `gsk_`) | `GROQ_API_KEY` = la clave |
+| **B. Google Gemini** (si Groq pide tarjeta) | aistudio.google.com → **Get API key** → **Create API key** | `IA_API_KEY` = la clave · `IA_URL` = `https://generativelanguage.googleapis.com/v1beta/openai/chat/completions` · `IA_MODEL` = `gemini-2.0-flash` |
+| **C. OpenRouter** (modelos abiertos gratis, con pocas consultas por día) | openrouter.ai → **Keys** → **Create Key** | `IA_API_KEY` = la clave · `IA_URL` = `https://openrouter.ai/api/v1/chat/completions` · `IA_MODEL` = `meta-llama/llama-3.3-70b-instruct:free` |
+
+Si un modelo deja de existir, el error lo dice ("model not found" o "decommissioned"): busca otro en la lista de modelos del proveedor y cambia `IA_MODEL` (o `GROQ_MODEL` en la opción A).
 
 ### 2. Tabla de la IA
 Supabase → **SQL Editor** → pega `06_ia.sql` → **Run**.
@@ -59,7 +67,7 @@ Supabase → **SQL Editor** → pega `06_ia.sql` → **Run**.
 2. Nombre de la función: `ia` (exactamente así, en minúsculas).
 3. Borra el código de ejemplo y pega **todo** el contenido de `supabase/functions/ia/index.ts`.
 4. **Deploy function**.
-5. Edge Functions → **Secrets** (o *Manage secrets*) → **Add new secret**:
+5. Edge Functions → **Secrets** (o *Manage secrets*) → **Add new secret**: los de la opción que elegiste en el paso 1. Para Groq:
    - Name: `GROQ_API_KEY` · Value: la clave `gsk_...` → **Save**.
 
 ### 4. Probar
@@ -67,7 +75,8 @@ Abre la app → 🏠 Hoy → **🤖 Asistente** → toca **¿Qué le doy hoy?**.
 
 | Si aparece... | Qué hacer |
 |---|---|
-| "Falta configurar GROQ_API_KEY" | Revisa el secreto del paso 3.5 (nombre exacto). |
+| "Falta configurar la clave de la IA" | Revisa los secretos del paso 3.5 (nombres exactos). |
+| "Failed to send a request to the Edge Function" | La función `ia` no existe o tiene otro nombre: repite el paso 3. |
 | "Invalid JWT" o error 401 | En la función `ia` → **Settings**, desactiva **Enforce JWT verification** (la función igual comprueba la sesión). |
 | "La IA no respondió (400)" con *model* o *decommissioned* | El modelo cambió de nombre: en console.groq.com → *Models* elige uno de texto y agrégalo como secreto `GROQ_MODEL`. |
 | "Failed to send a request" | La función no se llama exactamente `ia` o no se desplegó. |
