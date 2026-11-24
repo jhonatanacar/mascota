@@ -188,7 +188,7 @@ Queda con el ícono de la huella verde y se abre como una app.
 
 | Problema | Qué hacer |
 |---|---|
-| No llega el correo | Revisa spam. El plan gratis manda pocos correos por hora: espera unos minutos. |
+| No llega el correo o dice "email rate limit exceeded" | Supabase gratis manda muy pocos correos por hora. Espera ~1 hora sin reintentar, o entra con contraseña: ponla con **🔑 Contraseña** (arriba, con la sesión abierta) o créala en Supabase → Authentication → Users → **Add user → Create new user** (email + contraseña, marcando *Auto Confirm User*). |
 | El enlace del correo abre una página de error | Revisa las URL de la Parte 2, paso 5. |
 | "permission denied for table ..." | Corre `03_permisos.sql` otra vez. |
 | Tu hermano ve la app vacía | Falta correr `04_compartir.sql` (Parte 1.1). |
