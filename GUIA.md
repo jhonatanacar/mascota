@@ -44,6 +44,47 @@ No debe poder entrar.
 
 ---
 
+## Parte 1 b: Activar la IA (gratis, una sola vez)
+
+### 1. Clave de Groq
+1. Entra a **console.groq.com** y crea una cuenta (con Google o email). Es gratis.
+2. Menú **API Keys** → **Create API Key** → ponle de nombre `mascota` → copia la clave (empieza con `gsk_`).
+   - Guárdala solo para el paso 3. **Nunca** la pegues en ningún archivo del proyecto ni en GitHub.
+
+### 2. Tabla de la IA
+Supabase → **SQL Editor** → pega `06_ia.sql` → **Run**.
+
+### 3. Función "ia" en Supabase
+1. Supabase → **Edge Functions** → **Deploy a new function** → **Via Editor**.
+2. Nombre de la función: `ia` (exactamente así, en minúsculas).
+3. Borra el código de ejemplo y pega **todo** el contenido de `supabase/functions/ia/index.ts`.
+4. **Deploy function**.
+5. Edge Functions → **Secrets** (o *Manage secrets*) → **Add new secret**:
+   - Name: `GROQ_API_KEY` · Value: la clave `gsk_...` → **Save**.
+
+### 4. Probar
+Abre la app → 🏠 Hoy → **🤖 Asistente** → toca **¿Qué le doy hoy?**.
+
+| Si aparece... | Qué hacer |
+|---|---|
+| "Falta configurar GROQ_API_KEY" | Revisa el secreto del paso 3.5 (nombre exacto). |
+| "Invalid JWT" o error 401 | En la función `ia` → **Settings**, desactiva **Enforce JWT verification** (la función igual comprueba la sesión). |
+| "La IA no respondió (400)" con *model* o *decommissioned* | El modelo cambió de nombre: en console.groq.com → *Models* elige uno de texto y agrégalo como secreto `GROQ_MODEL`. |
+| "Failed to send a request" | La función no se llama exactamente `ia` o no se desplegó. |
+| "límite de 60 consultas" | Se usó mucho hoy. Vuelve mañana. |
+
+### Cómo funciona (y por qué es segura)
+- La IA **propone** y la app **decide**: antes de mostrar algo, lo revisa contra alergias, reglas y tóxicos.
+  Si choca, lo bloquea y lo guarda como "bloqueada" con el motivo.
+- "¿Puede comer chocolate?" lo responde la app sola: si está prohibido dice **No** sin preguntarle a la IA.
+- En "¿Qué le doy hoy?" la IA elige ingredientes **solo** de los permitidos; los **gramos los calcula la app**.
+- Lo que la IA quiere recordar o una regla que propone (ej. "alergia al salmón") queda **pendiente**:
+  tú tocas **✓ Recordar** o **Crear regla**. Lo confirmado se le envía en cada consulta (🐾 Mascotas → 🧠 Recuerdos).
+- Máximo 60 consultas por día entre los dos.
+- No es consejo veterinario.
+
+---
+
 ## Parte 2: Publicar en internet (GitHub Pages, gratis)
 
 1. Entra a **github.com** → **+ → New repository**.

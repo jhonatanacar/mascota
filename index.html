@@ -103,6 +103,18 @@
       </section>
       <h2>Hoy</h2>
       <div id="panel-hoy"></div>
+
+      <h2>🤖 Asistente</h2>
+      <div class="chips">
+        <button data-ia="menu">🍖 ¿Qué le doy hoy?</button>
+        <button data-ia="resumen">📊 Resumen de la semana</button>
+      </div>
+      <form id="f-ia" class="fila" style="margin-top:8px">
+        <input id="pregunta-ia" maxlength="300" placeholder="¿Puede comer zanahoria? ¿Por qué se rasca?" aria-label="Pregunta para la IA">
+        <button>Preguntar</button>
+      </form>
+      <div id="respuesta-ia"></div>
+      <div id="pendientes-ia"></div>
     </div>
 
     <div data-tab="mascotas" hidden>
@@ -114,6 +126,10 @@
       <p class="muted">Lo que la app nunca olvida. Las alergias y lo que hay que evitar bloquean comidas y recomendaciones.</p>
       <ul id="lista-reglas"></ul>
       <button id="nueva-regla" class="sec">+ Agregar regla</button>
+
+      <h2>🧠 Recuerdos de la IA</h2>
+      <p class="muted">Lo que confirmaste que la IA debe recordar. Se lo envía en cada consulta.</p>
+      <ul id="lista-recuerdos"></ul>
 
       <h2>Plan de alimentación</h2>
       <ul id="lista-plan"></ul>
@@ -155,6 +171,10 @@
       <div id="resultado-menu"></div>
       <button id="menu-semanal" class="sec">📅 Menú semanal + lista de compras</button>
       <div id="resultado-semanal"></div>
+
+      <h3 class="sub">🤖 Recomendaciones de la IA</h3>
+      <p class="muted">Se revisan otra vez contra sus reglas cada vez que cambian.</p>
+      <ul id="lista-recomendaciones"></ul>
 
       <h3 class="sub">Inventario</h3>
       <ul id="lista-inventario"></ul>
@@ -432,12 +452,13 @@
 <script src="reglas.js"></script>
 <script src="aprende.js"></script>
 <script src="comida.js"></script>
+<script src="ia.js"></script>
 <script>
   const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   const $ = id => document.getElementById(id);
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   let usuario = null, mascotas = [], contactos = [], reglas = [], plan = [], salud = [], meds = [], pesos = [], tomas = [], recientes = [],
-    ingMascota = [], inventario = [], gastos = [];
+    ingMascota = [], inventario = [], gastos = [], aprendizajes = [], recomendaciones = [];
 
   // ---------- Sesión ----------
   $('login').onsubmit = async e => {
@@ -461,7 +482,8 @@
       setTimeout(cargar); // Supabase pide no llamar a la base dentro de este callback
     } else {
       mascotas = contactos = [];
-      reglas = plan = salud = meds = pesos = tomas = recientes = ingMascota = inventario = gastos = [];
+      reglas = plan = salud = meds = pesos = tomas = recientes = ingMascota = inventario = gastos = aprendizajes = recomendaciones = [];
+      for (const id of ['respuesta-ia', 'pendientes-ia', 'lista-recuerdos', 'lista-recomendaciones']) $(id).innerHTML = '';
       for (const id of ['lista-mascotas', 'lista-contactos', 'lista-reglas', 'lista-plan', 'historial',
         'lista-proximos', 'lista-meds', 'lista-salud', 'lista-peso', 'grafico-peso', 'panel-hoy', 'calorias',
         'lista-ingredientes', 'resultado-menu', 'resultado-semanal', 'lista-inventario', 'lista-gastos', 'resumen-gastos']) $(id).innerHTML = '';
@@ -485,11 +507,13 @@
         .order('fecha_hora', { ascending: false }).limit(3000),
       sb.from('ingredientes_mascota').select('*'),
       sb.from('inventario').select('*').order('abierto', { ascending: false }),
-      sb.from('gastos').select('*').order('fecha', { ascending: false }).limit(500)
+      sb.from('gastos').select('*').order('fecha', { ascending: false }).limit(500),
+      sb.from('aprendizajes').select('*').order('fecha', { ascending: false }).limit(200),
+      sb.from('recomendaciones').select('*').order('fecha', { ascending: false }).limit(50)
     ]);
     const fallo = res.find(r => r.error);
     if (fallo) return ($('msg').textContent = 'Error al cargar: ' + fallo.error.message);
-    [mascotas, contactos, reglas, plan, salud, meds, pesos, tomas, recientes, ingMascota, inventario, gastos] = res.map(r => r.data);
+    [mascotas, contactos, reglas, plan, salud, meds, pesos, tomas, recientes, ingMascota, inventario, gastos, aprendizajes, recomendaciones] = res.map(r => r.data);
 
     const urls = {};
     const rutas = mascotas.map(x => x.foto_url).filter(Boolean);
@@ -661,6 +685,7 @@
     dibujarPeso();
     dibujarCrono();
     dibujarComida();
+    dibujarIA();
   }
 
   $('elegir-mascota').onclick = e => {
@@ -1220,26 +1245,32 @@
     (r.avisos.includes('oxalato') ? '<p class="aviso">🪨 Tiene ingredientes altos en oxalato: si tuvo cálculos urinarios, cámbialos.</p>' : '') +
     (o.pctCasero > 0 ? '<p class="aviso">💊 <b>Obligatorio:</b> la comida casera sola no cubre calcio, vitaminas ni minerales. Necesita un suplemento indicado por el veterinario. Valida el menú con él antes de usarlo siempre.</p>' : '');
 
+  // tabla del menú calculado (gramos SIEMPRE calculados por el código) + avisos + botón para pasarlo al plan
+  function htmlMenu(r, o) {
+    const filas = r.items.map((it, i) => [it.nombre, r.gramos[i], r.porComida[i]]).filter(x => x[1] > 0);
+    if (r.croquetasG) filas.push(['Croquetas', r.croquetasG, r.porComida[3]]);
+    return `
+      <table class="menu"><tr><th>Ingrediente (cocido)</th><th>g/día</th><th>g/comida</th></tr>
+      ${filas.map(x => `<tr><td>${esc(x[0])}</td><td>${x[1]}</td><td>${x[2]}</td></tr>`).join('')}</table>
+      <p class="muted">${o.kcalDia} kcal/día${o.pctCasero ? ` · parte casera ${r.kcal} kcal (proteína ${r.prot} g, grasa ${r.grasa} g = ${r.grasaPct} % de sus calorías)` : ''}${r.kcalPremios ? ` · premios hasta ${r.kcalPremios} kcal` : ''}</p>
+      ${avisosMenu(r, o)}
+      <button class="usar-menu" type="button">Usar como plan de alimentación</button>`;
+  }
+
   $('f-menu').onsubmit = e => {
     e.preventDefault();
     const o = opcionesMenu();
     if (!o) return;
     const r = calcularMenu(o);
     ultimoMenu = { ...o, r };
-    const filas = r.items.map((it, i) => [it.nombre, r.gramos[i], r.porComida[i]]).filter(x => x[1] > 0);
-    if (r.croquetasG) filas.push(['Croquetas', r.croquetasG, r.porComida[3]]);
-    $('resultado-menu').innerHTML = `
-      <table class="menu"><tr><th>Ingrediente (cocido)</th><th>g/día</th><th>g/comida</th></tr>
-      ${filas.map(x => `<tr><td>${esc(x[0])}</td><td>${x[1]}</td><td>${x[2]}</td></tr>`).join('')}</table>
-      <p class="muted">${o.kcalDia} kcal/día${o.pctCasero ? ` · parte casera ${r.kcal} kcal (proteína ${r.prot} g, grasa ${r.grasa} g = ${r.grasaPct} % de sus calorías)` : ''}${r.kcalPremios ? ` · premios hasta ${r.kcalPremios} kcal` : ''}</p>
-      ${avisosMenu(r, o)}
-      <button id="guardar-menu" type="button">Usar como plan de alimentación</button>`;
+    $('resultado-menu').innerHTML = htmlMenu(r, o);
   };
 
   const HORAS = { 1: ['08:00'], 2: ['08:00', '19:00'], 3: ['08:00', '13:00', '19:00'], 4: ['08:00', '12:00', '16:00', '20:00'] };
-  $('resultado-menu').onclick = async e => {
-    if (e.target.id !== 'guardar-menu' || !ultimoMenu) return;
-    const { m, r, comidas } = ultimoMenu;
+  $('resultado-menu').onclick = e => { if (e.target.closest('.usar-menu')) usarMenuComoPlan(); };
+  async function usarMenuComoPlan() {
+    if (!ultimoMenu) return;
+    const { m, r, comidas, recId } = ultimoMenu;
     const partes = r.items.map((it, i) => r.porComida[i] ? `${sinParentesis(it.nombre)} ${r.porComida[i]} g` : null).filter(Boolean);
     if (r.croquetasG) partes.push(`croquetas ${r.porComida[3]} g`);
     const alimento = partes.join(' + '), gramos = r.porComida.reduce((s, g) => s + g, 0);
@@ -1252,9 +1283,10 @@
     }
     const { error } = await sb.from('plan_alimentacion').insert(HORAS[comidas].map(hora => ({ mascota_id: m.id, alimento, gramos, hora, activo: true })));
     if (error) return alert('No se pudo guardar: ' + error.message);
+    if (recId) await sb.from('recomendaciones').update({ estado: 'aceptada' }).eq('id', recId);
     alert(`Listo: ${comidas} comida(s) en el plan de ${m.nombre}. Las ves en 🐾 Mascotas → Plan de alimentación.`);
     cargar();
-  };
+  }
 
   $('menu-semanal').onclick = () => {
     const o = opcionesMenu();
@@ -1300,6 +1332,146 @@
   };
   alEnviar(dlgInv, f => guardar('inventario', f));
   alBorrar(dlgInv, 'inventario', () => inventario, i => `¿Eliminar "${i.alimento}" del inventario?`);
+
+  // ---------- Asistente IA (Groq vía Edge Function "ia"; la validación está en ia.js) ----------
+  const prohibidosDe = id => [...reglasDe(id).filter(r => r.activa && (r.tipo === 'alergia' || r.tipo === 'evitar')), ...TOXICOS];
+  const disponiblesIds = m => ({ prot: disponibles(m, 'proteina').map(i => i.id), carb: disponibles(m, 'carbohidrato').map(i => i.id), veg: disponibles(m, 'verdura').map(i => i.id) });
+
+  // Lo que la IA sabe de la mascota en cada consulta (solo datos de la app, nada de los usuarios)
+  function contextoIA(m, disp) {
+    const pk = pesos.filter(p => p.mascota_id === m.id).pop(), k = kcalMascota(m);
+    const reglasM = reglasDe(m.id).filter(r => r.activa);
+    return {
+      fecha_hoy: new Date().toLocaleString('es'),
+      mascota: { nombre: m.nombre, especie: m.especie, raza: m.raza, edad: m.fecha_nacimiento ? edad(m.fecha_nacimiento) : null, sexo: m.sexo,
+        esterilizado: m.esterilizado, peso_kg: pk ? +pk.kg : null, actividad: m.actividad, objetivo: m.objetivo, notas: m.notas },
+      kcal_dia: k ? k.kcal : null,
+      prohibidos: [...reglasM.filter(r => r.tipo === 'alergia' || r.tipo === 'evitar')
+        .map(r => `${r.sustancia} (${r.tipo}${r.sinonimos.length ? '; también: ' + r.sinonimos.join(', ') : ''})`), ...TOXICOS.map(t => `${t.sustancia} (tóxico)`)],
+      preferencias_e_indicaciones: reglasM.filter(r => r.tipo === 'preferencia' || r.tipo === 'indicacion_vet').map(r => `${r.tipo}: ${r.sustancia}`),
+      disponibles: Object.fromEntries(Object.entries(disp).map(([g, ids]) => [g, ids.map(id => {
+        const i = CATALOGO.find(c => c.id === id);
+        return { id, nombre: i.nombre, estado: estadoIng(m.id, i) || 'no probado', grasa_alta: !!i.grasaAlta };
+      })])),
+      plan_actual: plan.filter(p => p.mascota_id === m.id && p.activo).map(p => `${p.hora ? p.hora.slice(0, 5) : ''} ${p.alimento}${p.gramos ? ' ' + p.gramos + ' g' : ''}`.trim()),
+      medicamentos: meds.filter(x => x.mascota_id === m.id && (!x.hasta || x.hasta >= hoyISO())).map(x => `${x.nombre} ${x.dosis || ''}`.trim()),
+      ultimos_7_dias: recientes.filter(e => e.mascota_id === m.id && Date.now() - new Date(e.fecha_hora) <= 7 * 864e5).slice(0, 60)
+        .map(e => ({ tipo: e.tipo, cuando: new Date(e.fecha_hora).toLocaleString('es'), nota: e.nota || undefined, minutos: e.duracion_min || undefined })),
+      salud_reciente: salud.filter(s => s.mascota_id === m.id).slice(0, 6).map(s => `${s.fecha} ${s.tipo} ${s.detalle || ''}`.trim()),
+      recuerdos: aprendizajes.filter(a => a.mascota_id === m.id && a.confirmado).map(a => a.texto),
+    };
+  }
+
+  const mostrarIA = html => { $('respuesta-ia').innerHTML = html; };
+
+  async function preguntarIA(modo, pregunta = '') {
+    const m = mascotas.find(x => x.id === elegida);
+    if (!m) return mostrarIA('<p class="muted">Agrega una mascota primero.</p>');
+    const prohibidos = prohibidosDe(m.id);
+    // "¿Puede comer chocolate?": lo decide el código, sin preguntarle a la IA
+    const c = modo === 'pregunta' ? chocan(pregunta, prohibidos) : [];
+    if (c.length) return mostrarIA(`<div class="hoy"><p class="alerta"><b>⛔ No.</b> ${esc(c.map(r => `${r.sustancia}: ${r.toxico ? 'tóxico para perros' : r.tipo === 'alergia' ? `alergia de ${m.nombre}` : 'está en sus reglas'}`).join(' · '))}.</p><p class="muted">Esto lo decide la app con sus reglas, no la IA.</p></div>`);
+
+    mostrarIA('<p class="muted">🤖 Pensando…</p>');
+    const disp = disponiblesIds(m);
+    const { data, error } = await sb.functions.invoke('ia', { body: {
+      modo, pregunta: pregunta || (modo === 'menu' ? '¿Qué le doy de comer hoy?' : 'Resume sus últimos 7 días'), contexto: contextoIA(m, disp) } });
+    if (error) {
+      let msg = error.message;
+      try { msg = (await error.context.json()).error || msg; } catch {}
+      return mostrarIA(`<p class="alerta">No se pudo consultar a la IA: ${esc(msg)}</p>`);
+    }
+    const v = validarIA(data, prohibidos, disp, CATALOGO);
+    if (v.error) return mostrarIA(`<p class="alerta">${esc(data?.error || v.error)}</p>`);
+
+    // lo que propone queda pendiente hasta que el usuario lo confirme
+    const pendientes = [];
+    if (v.aprendizaje) pendientes.push({ mascota_id: m.id, origen: 'ia', texto: v.aprendizaje, confirmado: false });
+    if (v.regla) pendientes.push({ mascota_id: m.id, origen: 'ia', confirmado: false, datos: { regla: v.regla },
+      texto: `Crear regla: ${v.regla.tipo} a "${v.regla.sustancia}". ${v.regla.motivo}`.trim() });
+    if (pendientes.length) await sb.from('aprendizajes').insert(pendientes);
+
+    if (v.bloqueos.length) {
+      const motivo = v.bloqueos.map(b => `${b.alimento}: ${b.regla.toxico ? 'tóxico' : b.regla.tipo} (${b.regla.sustancia})`).join('; ');
+      const r0 = v.bloqueos.find(b => !b.regla.toxico)?.regla;
+      await sb.from('recomendaciones').insert({ mascota_id: m.id, texto: v.respuesta, ingredientes: v.bloqueos.map(b => b.alimento),
+        estado: 'bloqueada', motivo_bloqueo: motivo, regla_id: r0 ? r0.id : null });
+      mostrarIA(`<div class="hoy"><p class="alerta">⛔ La IA sugirió algo que choca con las reglas de ${esc(m.nombre)} y lo bloqueé: ${esc(motivo)}.</p><p class="muted">Vuelve a preguntar.</p></div>`);
+      return cargar();
+    }
+
+    let extra = '';
+    if (modo === 'menu' && v.menu) {
+      const f = $('f-menu').elements;
+      f.prot.value = v.menu.prot; f.carb.value = v.menu.carb; f.veg.value = v.menu.veg;
+      const o = opcionesMenu();
+      if (o) {
+        const r = calcularMenu(o);
+        const { data: rec } = await sb.from('recomendaciones').insert({ mascota_id: m.id, texto: v.respuesta,
+          ingredientes: r.items.map(i => i.nombre), estado: 'propuesta' }).select('id').single();
+        ultimoMenu = { ...o, r, recId: rec?.id };
+        extra = htmlMenu(r, o) + '<p class="muted">La IA eligió los ingredientes; los gramos los calculó la app.</p>';
+      }
+    } else if (modo === 'menu') extra = '<p class="muted">La IA no propuso un menú válido con los ingredientes permitidos. Prueba otra vez.</p>';
+
+    mostrarIA(`<div class="hoy"><p>${esc(v.respuesta).replace(/\n/g, '<br>')}</p>
+      ${v.menciones.length ? `<p class="aviso">Ojo: menciona ${esc(v.menciones.join(', '))}, que está en sus reglas o es tóxico. No se lo des.</p>` : ''}
+      ${extra}
+      <p class="muted">🤖 Sugerencia de una IA: no reemplaza al veterinario.</p></div>`);
+    cargar();
+  }
+
+  document.querySelectorAll('[data-ia]').forEach(b => { b.onclick = () => preguntarIA(b.dataset.ia); });
+  $('f-ia').onsubmit = e => {
+    e.preventDefault();
+    const p = $('pregunta-ia').value.trim();
+    if (p) preguntarIA('pregunta', p);
+  };
+  $('respuesta-ia').onclick = e => { if (e.target.closest('.usar-menu')) usarMenuComoPlan(); };
+
+  function dibujarIA() {
+    const m = mascotas.find(x => x.id === elegida);
+    const deM = aprendizajes.filter(a => m && a.mascota_id === m.id);
+    const pend = deM.filter(a => !a.confirmado);
+    $('pendientes-ia').innerHTML = pend.length ? `<h3 class="sub">🧠 La IA propone recordar</h3><ul>${pend.map(a => `
+      <li><span style="flex:1">${esc(a.texto)}</span>
+        <button class="dar" data-confirmar="${a.id}">${a.datos?.regla ? 'Crear regla' : '✓ Recordar'}</button>
+        <button data-descartar="${a.id}" aria-label="Descartar">✗</button></li>`).join('')}</ul>` : '';
+    $('lista-recuerdos').innerHTML = deM.filter(a => a.confirmado).map(a => `
+      <li><span style="flex:1">${esc(a.texto)}</span><button data-descartar="${a.id}" aria-label="Olvidar">✗</button></li>`).join('')
+      || '<li class="muted">Todavía nada.</li>';
+
+    const ICONO_REC = { propuesta: '💡', aceptada: '✅', rechazada: '✗', bloqueada: '⛔' };
+    $('lista-recomendaciones').innerHTML = recomendaciones.filter(r => m && r.mascota_id === m.id).slice(0, 10).map(r => {
+      const choca = r.estado !== 'bloqueada' && r.estado !== 'rechazada' ? chocan(r.ingredientes.join(', '), prohibidosDe(m.id)) : [];
+      return `<li><span style="flex:1">${ICONO_REC[r.estado]} ${esc(r.ingredientes.map(sinParentesis).join(' + ') || r.texto.slice(0, 80))}
+        <small class="muted" style="display:block">${esc(new Date(r.fecha).toLocaleDateString('es'))}${r.motivo_bloqueo ? ' · ' + esc(r.motivo_bloqueo) : ''}</small>
+        ${choca.length ? `<small class="alerta" style="display:block">⛔ Ahora choca con: ${esc(choca.map(x => x.sustancia).join(', '))}</small>` : ''}</span>
+        ${r.estado === 'propuesta' ? `<button data-rec="${r.id}" data-estado="rechazada" aria-label="Rechazar">✗</button>` : ''}</li>`;
+    }).join('') || '<li class="muted">Todavía nada. Usa "¿Qué le doy hoy?" en 🏠 Hoy.</li>';
+  }
+
+  async function accionIA(e) {
+    const conf = e.target.closest('[data-confirmar]'), desc = e.target.closest('[data-descartar]'), rec = e.target.closest('[data-rec]');
+    let error;
+    if (conf) {
+      const a = aprendizajes.find(x => x.id === conf.dataset.confirmar);
+      const r = a?.datos?.regla;
+      if (r) {
+        if (!confirm(`¿Crear la regla "${r.tipo}: ${r.sustancia}" para ${nombreMascota(a.mascota_id)}?\n\nMotivo de la IA: ${r.motivo || '—'}`)) return;
+        ({ error } = await sb.from('reglas').insert({ mascota_id: a.mascota_id, tipo: r.tipo, sustancia: r.sustancia,
+          sinonimos: sugerirSinonimos(r.sustancia), origen: 'ia' }));
+      }
+      if (!error) ({ error } = await sb.from('aprendizajes').update({ confirmado: true }).eq('id', a.id));
+    } else if (desc) {
+      ({ error } = await sb.from('aprendizajes').delete().eq('id', desc.dataset.descartar));
+    } else if (rec) {
+      ({ error } = await sb.from('recomendaciones').update({ estado: rec.dataset.estado }).eq('id', rec.dataset.rec));
+    } else return;
+    if (error) alert('No se pudo guardar: ' + error.message);
+    cargar();
+  }
+  $('pendientes-ia').onclick = $('lista-recuerdos').onclick = $('lista-recomendaciones').onclick = accionIA;
 
   // ---------- Gastos ----------
   const ICONO_GASTO = { veterinario: '🩺', comida: '🍖', peluqueria: '✂️', medicinas: '💊', accesorios: '🎾', otros: '📦' };

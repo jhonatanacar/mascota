@@ -1,5 +1,5 @@
 -- Esquema completo de Mascota. Pegar entero en Supabase > SQL Editor > Run.
--- Proyecto nuevo: correr en orden schema.sql, 02_fotos.sql, 03_permisos.sql, 04_compartir.sql, 05_comida.sql.
+-- Proyecto nuevo: correr en orden schema.sql, 02_fotos.sql, 03_permisos.sql, 04_compartir.sql, 05_comida.sql, 06_ia.sql.
 -- Seguridad: RLS en todas las tablas. Aquí cada usuario ve lo suyo; 04_compartir.sql lo cambia a "todos los usuarios con sesión comparten todo".
 
 create table public.mascotas (
