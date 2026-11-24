@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: read
+  actions: read # deploy-pages necesita listar el artefacto de esta ejecución
   pages: write
   id-token: write
 
